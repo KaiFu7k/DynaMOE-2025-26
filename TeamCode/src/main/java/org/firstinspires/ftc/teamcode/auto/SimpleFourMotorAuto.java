@@ -16,10 +16,9 @@ public class SimpleFourMotorAuto extends LinearOpMode {
         DcMotor rightBack  = hardwareMap.get(DcMotor.class, "rightBack");
         DcMotor rightFront = hardwareMap.get(DcMotor.class, "rightFront");
 
-        // reverse to go foward
+
         rightBack.setDirection(DcMotor.Direction.FORWARD);
         rightFront.setDirection(DcMotor.Direction.FORWARD);
-        // already works
         leftFront.setDirection(DcMotor.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.FORWARD);
 
@@ -27,9 +26,8 @@ public class SimpleFourMotorAuto extends LinearOpMode {
 
         // power test
 
-        double rightPower = 0.2;
-        //missing the wheel so cut inhalf
-        double leftPower = 0.2;
+        double rightPower = 0.6;
+        double leftPower = 0.6;
 
         // driivng
         telemetry.addData("status", "driving");
@@ -42,8 +40,8 @@ public class SimpleFourMotorAuto extends LinearOpMode {
         rightBack.setPower(rightPower);
         rightFront.setPower(rightPower);
 
-        // driving for 4 secs
-        sleep(4000);
+        // driving for x secs
+        sleep(2000);
 
         // stop
         leftFront.setPower(0);

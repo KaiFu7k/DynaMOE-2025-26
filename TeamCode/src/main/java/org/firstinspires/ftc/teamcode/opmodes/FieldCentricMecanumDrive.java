@@ -14,7 +14,7 @@ public class FieldCentricMecanumDrive extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         DcMotor leftFront  = hardwareMap.get(DcMotor.class, "leftFront");
         DcMotor leftBack   = hardwareMap.get(DcMotor.class, "leftBack");
-        DcMotor rightBack  = hardwareMap.get(DcMotor.class, "rig`htBack");
+        DcMotor rightBack  = hardwareMap.get(DcMotor.class, "rightBack");
         DcMotor rightFront = hardwareMap.get(DcMotor.class, "rightFront");
 
         rightBack.setDirection(DcMotor.Direction.FORWARD);

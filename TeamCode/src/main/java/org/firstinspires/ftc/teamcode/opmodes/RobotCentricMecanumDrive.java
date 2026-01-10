@@ -7,12 +7,18 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 @TeleOp
 public class RobotCentricMecanumDrive extends LinearOpMode{
+    private DcMotor leftFront = null;
+    private DcMotor leftBack = null;
+    private DcMotor rightBack = null;
+    private DcMotor rightFront = null;
+    private DcMotor intakeMotor = null;
     @Override
     public void runOpMode() throws InterruptedException {
-        DcMotor leftFront  = hardwareMap.get(DcMotor.class, "leftFront");
-        DcMotor leftBack   = hardwareMap.get(DcMotor.class, "leftBack");
-        DcMotor rightBack  = hardwareMap.get(DcMotor.class, "rightBack");
-        DcMotor rightFront = hardwareMap.get(DcMotor.class, "rightFront");
+        leftFront  = hardwareMap.get(DcMotor.class, "leftFront");
+        leftBack   = hardwareMap.get(DcMotor.class, "leftBack");
+        rightBack  = hardwareMap.get(DcMotor.class, "rightBack");
+        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake");
         //reverse later
         rightBack.setDirection(DcMotor.Direction.FORWARD);
         rightFront.setDirection(DcMotor.Direction.FORWARD);
@@ -44,6 +50,18 @@ public class RobotCentricMecanumDrive extends LinearOpMode{
             leftBack.setPower(leftBackPower);
             rightBack.setPower(rightBackPower);
             rightFront.setPower(rightFrontPower);
+
+            intake();
+        }
+
+    }
+    private void intake(){
+        if (gamepad1.right_trigger>0.5) {
+            intakeMotor.setPower(0.5);
+        } else if (gamepad1.left_trigger>0.5) {
+            intakeMotor.setPower(-0.5);
+        } else {
+            intakeMotor.setPower(0);
         }
     }
 }

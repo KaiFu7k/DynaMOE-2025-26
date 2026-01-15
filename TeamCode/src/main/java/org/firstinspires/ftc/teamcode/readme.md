@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is the robot code for DynaMOE Team 19889 competing in the FIRST Tech Challenge DECODE game (2024-25 season). The codebase uses a modular subsystem architecture that allows code sharing between Autonomous and TeleOp modes.
+This is the robot code for DynaMOE Team 19889 competing in the FIRST Tech Challenge DECODE game (2025-26 season). The codebase uses a modular subsystem architecture that allows code sharing between Autonomous and TeleOp modes.
 
 ## Code Architecture
 
@@ -18,8 +18,8 @@ Our code is organized into **subsystems** - independent modules that each contro
 ```
 teamcode/
 ├── opmodes/                  # Competition OpModes (what you select on Driver Hub)
-│   ├── DynaMOE_19889_Auton.java              # Original autonomous (kept for backup)
-│   ├── DynaMOE_19889_Auton_Refactored.java   # New modular autonomous ⭐
+│   ├── DynaMOE_19889_Auton.java              # Modular autonomous ⭐
+│   ├── DynaMOE_19889_Auton_Old.java          # Original autonomous (backup)
 │   ├── DynaMOE_19889_TeleOp.java             # Driver-controlled mode ⭐
 │   ├── FieldCentricMecanumDrive.java         # Field-centric drive (legacy)
 │   ├── RobotCentricMecanumDrive.java         # Robot-centric drive (legacy)
@@ -111,10 +111,10 @@ robot.artifactManager.getPatternSequence(Motif.GPP);
 
 ## Competition OpModes
 
-### Autonomous: DynaMOE_19889_Auton_Refactored
+### Autonomous: DynaMOE_19889_Auton
 **Match Day Steps:**
 1. Place robot at starting position
-2. Select "DynaMOE 19889 Auto [Refactored]"
+2. Select "DynaMOE 19889 Auto"
 3. D-Pad: Select position (UP=Blue Goal, DOWN=Blue Perimeter, LEFT=Red Goal, RIGHT=Red Perimeter)
 4. Y: Cycle MOTIF pattern
 5. A: Confirm
@@ -152,8 +152,8 @@ robot.updateTelemetry();
 ```
 
 ## Team Info
-**Team:** DynaMOE 19889  
-**Season:** 2024-25 (DECODE)  
+**Team:** DynaMOE 19889
+**Season:** 2025-26 (DECODE)
 **License:** MIT
 
 Good luck at competition! 🤖🏆

@@ -109,9 +109,13 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Provides IMU heading and pose tracking
         follower = Constants.createFollower(hardwareMap);
 
+
         // Initialize robot hardware (all subsystems: drivetrain, launcher, intake, etc.)
         robot = new RobotHardware(telemetry);
         robot.init(hardwareMap);
+
+        // Kubar says this should fix brake
+        follower.getDrivetrain().startTeleopDrive();
 
         robot.logger.info("TeleOp", "Initialization complete");
 

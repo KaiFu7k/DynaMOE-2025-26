@@ -25,15 +25,18 @@ import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
  * Right Stick: Rotation
  * Right Trigger: Intake artifacts
  * Left Trigger: Outtake artifacts
- * A: Spin up launchers (close shot)
+ * A: Spin up launchers (at current speed)
  * B: Stop launchers
  * X: Feed left launcher
  * Y: Feed right launcher
+ * D-Pad Up/Down: Increase/decrease launcher speed (50 RPM increments)
  * D-Pad Left/Right: Toggle robot/field-centric drive
  *
  * === GAMEPAD 2 (Operator) - Optional ===
- * D-Pad Up: Switch to far shot
- * D-Pad Down: Switch to close shot
+ * D-Pad Up: Preset far shot (1350 RPM)
+ * D-Pad Down: Preset close shot (1200 RPM)
+ * D-Pad Left: Preset max range (1550 RPM)
+ * D-Pad Right: Preset min safe (900 RPM)
  *
  * MATCH WORKFLOW:
  * 1. Autonomous runs first (30 seconds)
@@ -58,6 +61,12 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // Launcher state
     private boolean launcherActive = false;
+
+    // Manual launcher speed control (Plan A)
+    private static final double LAUNCHER_MIN_SPEED = 800;   // Minimum safe RPM
+    private static final double LAUNCHER_MAX_SPEED = 1600;  // Maximum safe RPM
+    private static final double LAUNCHER_SPEED_INCREMENT = 50;  // RPM change per button press
+    private double manualLauncherSpeed = 1200;  // Starting speed (close shot default)
 
     // Motor power tracking for telemetry
     private double currentLFPower = 0;
@@ -126,7 +135,9 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Runs continuously until match ends or STOP is pressed
         while (opModeIsActive()) {
             // Update Pedro Pathing pose tracking (for field-centric drive)
-            // Must be called every loop to maintain accurate heading
+            // HYBRID APPROACH: We use Pedro ONLY for IMU heading/position tracking
+            // Pedro does NOT control motors - we handle that via robot.drivetrain
+            // This avoids conflicts with brake mode and gives us full motor control
             follower.update();
 
             // Update all subsystems (refresh sensor readings, update state machines)
@@ -266,32 +277,72 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Two flywheels (left and right) spin at high velocity to launch artifacts
      * - Feeders push artifacts from storage into the spinning flywheels
      * - System must reach target velocity before feeding (prevents weak launches)
-     * - Two velocity presets: CLOSE shot and FAR shot (different RPMs)
+     * - MANUAL SPEED CONTROL: Driver adjusts RPM in real-time (Plan A)
+     *
+     * MANUAL SPEED CONTROL (PLAN A):
+     * - D-Pad Up/Down: Adjust speed in 50 RPM increments (800-1600 RPM range)
+     * - Speed can be adjusted before spin-up OR while launchers are running
+     * - Current speed shown in telemetry at all times
+     * - Gamepad 2 has quick presets for common distances (optional)
      *
      * WORKFLOW:
-     *
-     * 1. Driver presses A to spin up launchers
-     * 2. Wait for "Ready" indicator (motors reached target velocity)
-     * 3. Press X or Y to feed left/right launcher
-     * 4. Press B to stop launchers when done (saves battery)
+     * 1. Adjust speed with D-Pad Up/Down until target RPM is shown
+     * 2. Press A to spin up launchers at current speed
+     * 3. Wait for "Ready" indicator (motors reached target velocity)
+     * 4. Press X or Y to feed left/right launcher
+     * 5. Adjust speed mid-match if needed (D-Pad Up/Down while spinning)
+     * 6. Press B to stop launchers when done (saves battery)
      *
      * SAFETY FEATURES:
+     * - Speed clamped to safe range (800-1600 RPM)
      * - Can't feed until launchers are at speed (prevents jams)
      * - State tracking prevents accidental multiple spin-ups
      * - Separate left/right feeding for artifact management
      */
     private void handleLauncherControls() {
-        // A button: Spin up launchers (close shot)
-        // Only activates if launchers aren't already running (prevents re-initialization)
+        // === MANUAL SPEED ADJUSTMENT (PLAN A) ===
+        // D-Pad Up/Down: Increase/decrease launcher speed in 50 RPM increments
+        // Works whether launchers are spinning or not (pre-set before spin-up)
+        if (gamepad1.dpad_up) {
+            manualLauncherSpeed += LAUNCHER_SPEED_INCREMENT;
+            // Clamp to maximum safe speed
+            if (manualLauncherSpeed > LAUNCHER_MAX_SPEED) {
+                manualLauncherSpeed = LAUNCHER_MAX_SPEED;
+            }
+
+            // If launchers are already spinning, apply new speed immediately
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+                robot.logger.info("Launcher", String.format("Speed increased to %.0f RPM", manualLauncherSpeed));
+            }
+            sleep(150);  // Debounce
+        }
+        else if (gamepad1.dpad_down) {
+            manualLauncherSpeed -= LAUNCHER_SPEED_INCREMENT;
+            // Clamp to minimum safe speed
+            if (manualLauncherSpeed < LAUNCHER_MIN_SPEED) {
+                manualLauncherSpeed = LAUNCHER_MIN_SPEED;
+            }
+
+            // If launchers are already spinning, apply new speed immediately
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+                robot.logger.info("Launcher", String.format("Speed decreased to %.0f RPM", manualLauncherSpeed));
+            }
+            sleep(150);  // Debounce
+        }
+
+        // A button: Spin up launchers at current manual speed
+        // Uses manualLauncherSpeed instead of preset close/far shot
         if (gamepad1.a && !launcherActive) {
-            robot.launcher.spinUp(true);  // true = close shot velocity
+            robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             launcherActive = true;
-            robot.logger.info("Launcher", "Spinning up (close shot)");
+            robot.logger.info("Launcher", String.format("Spinning up at %.0f RPM", manualLauncherSpeed));
         }
 
         // B button: Stop launchers
         // Stops flywheels and feeders, saves battery power
-        // Only triggers if launchers are currently active
+        // Manual speed setting is preserved for next spin-up
         if (gamepad1.b && launcherActive) {
             robot.launcher.stop();
             launcherActive = false;
@@ -316,21 +367,47 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.logger.info("Launcher", "Feeding RIGHT");
         }
 
-        // === GAMEPAD 2: OPERATOR CONTROLS ===
-        // Optional second driver can adjust shot distance during match
-        // Useful for adapting to different scoring positions
+        // === GAMEPAD 2: OPERATOR CONTROLS (OPTIONAL) ===
+        // Backup controls for 2-driver setup
+        // Also allows larger speed jumps with presets
 
-        // D-pad up: Switch to far shot (higher velocity)
+        // D-pad up: Quick preset - Far shot (1350 RPM)
         if (gamepad2.dpad_up) {
-            robot.launcher.spinUp(false);  // false = far shot velocity
-            robot.logger.info("Launcher", "Switched to FAR shot");
+            manualLauncherSpeed = 1350;
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+            }
+            robot.logger.info("Launcher", "Preset: FAR shot (1350 RPM)");
             sleep(200);  // Debounce
         }
 
-        // D-pad down: Switch to close shot (lower velocity)
+        // D-pad down: Quick preset - Close shot (1200 RPM)
         else if (gamepad2.dpad_down) {
-            robot.launcher.spinUp(true);  // true = close shot velocity
-            robot.logger.info("Launcher", "Switched to CLOSE shot");
+            manualLauncherSpeed = 1200;
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+            }
+            robot.logger.info("Launcher", "Preset: CLOSE shot (1200 RPM)");
+            sleep(200);  // Debounce
+        }
+
+        // D-pad left: Quick preset - Max range (1550 RPM)
+        else if (gamepad2.dpad_left) {
+            manualLauncherSpeed = 1550;
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+            }
+            robot.logger.info("Launcher", "Preset: MAX range (1550 RPM)");
+            sleep(200);  // Debounce
+        }
+
+        // D-pad right: Quick preset - Min safe (900 RPM)
+        else if (gamepad2.dpad_right) {
+            manualLauncherSpeed = 900;
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+            }
+            robot.logger.info("Launcher", "Preset: MIN safe (900 RPM)");
             sleep(200);  // Debounce
         }
     }
@@ -377,12 +454,24 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addData("RB (Right Back)", "%.2f", currentRBPower);
         telemetry.addLine();
 
+        // === BRAKE MODE DIAGNOSTIC ===
+        // Check if Pedro Pathing is overriding our brake mode settings
+        telemetry.addLine("--- BRAKE MODE STATUS ---");
+        telemetry.addData("LF Brake Mode", robot.drivetrain.getLeftFrontDrive().getZeroPowerBehavior());
+        telemetry.addData("RF Brake Mode", robot.drivetrain.getRightFrontDrive().getZeroPowerBehavior());
+        telemetry.addData("LB Brake Mode", robot.drivetrain.getLeftBackDrive().getZeroPowerBehavior());
+        telemetry.addData("RB Brake Mode", robot.drivetrain.getRightBackDrive().getZeroPowerBehavior());
+        telemetry.addLine();
+
         // === LAUNCHER STATUS ===
         // Most critical info: tells drivers if system is ready to score
         telemetry.addData("Launcher", launcherActive ? "ACTIVE" : "Stopped");
+
+        // Always show target speed (even when stopped, so driver knows what's set)
+        telemetry.addData("Target Speed", "%.0f RPM", manualLauncherSpeed);
+
         if (launcherActive) {
             // Show current velocities for both flywheels
-            // Drivers should verify these match target (1200 or 1350 RPM)
             double[] velocities = robot.launcher.getVelocities();
             telemetry.addData("  Left", "%.0f RPM", velocities[0]);
             telemetry.addData("  Right", "%.0f RPM", velocities[1]);
@@ -407,6 +496,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addLine("RT: Intake | LT: Outtake");
         telemetry.addLine("A: Launchers ON | B: OFF");
         telemetry.addLine("X: Feed Left | Y: Feed Right");
+        telemetry.addLine("D-Pad U/D: Speed +/- 50 RPM");
         telemetry.addLine("D-Pad L/R: Toggle Drive Mode");
 
         // Push all telemetry data to Driver Hub screen

@@ -54,10 +54,16 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     private Follower follower;
 
     // Drive control
-    private boolean fieldCentric = true;  // Toggle with dpad_left/dpad_right
+    private boolean fieldCentric = false;  // Toggle with dpad_left/dpad_right
 
     // Launcher state
     private boolean launcherActive = false;
+
+    // Motor power tracking for telemetry
+    private double currentLFPower = 0;
+    private double currentRFPower = 0;
+    private double currentLBPower = 0;
+    private double currentRBPower = 0;
 
     /**
      * Main OpMode execution method - called by FTC SDK when OpMode is selected.
@@ -90,13 +96,13 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     public void runOpMode() {
         // === INITIALIZATION PHASE ===
 
-        // Initialize robot hardware (all subsystems: drivetrain, launcher, intake, etc.)
-        robot = new RobotHardware(telemetry);
-        robot.init(hardwareMap);
-
         // Initialize Pedro Pathing follower for field-centric drive
         // Provides IMU heading and pose tracking
         follower = Constants.createFollower(hardwareMap);
+
+        // Initialize robot hardware (all subsystems: drivetrain, launcher, intake, etc.)
+        robot = new RobotHardware(telemetry);
+        robot.init(hardwareMap);
 
         robot.logger.info("TeleOp", "Initialization complete");
 
@@ -127,14 +133,12 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.updateSubsystems();
 
             // Process gamepad inputs and send commands to hardware
-            /**
             handleDriveControls();      // Mecanum drive (field/robot-centric)
             handleIntakeControls();     // Artifact intake/outtake
-             */
             handleLauncherControls();   // Launcher spin-up and feeding
 
             // Update Driver Hub display with current status
-//            updateTelemetry();
+            updateTelemetry();
 
             // Small delay to prevent CPU overload
             // Loop runs at ~100Hz (every 10ms)
@@ -167,7 +171,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Robot's heading is compensated using IMU, so controls stay consistent
      * - Driver doesn't need to adjust for robot rotation
      */
-    /**
     private void handleDriveControls() {
         // Get gamepad inputs
         // Y axis: Forward/backward (negated because gamepad Y is inverted)
@@ -228,6 +231,12 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             rightBackPower = (y + x - rx) / denominator;
         }
 
+        // Store power values for telemetry display
+        currentLFPower = leftFrontPower;
+        currentRFPower = rightFrontPower;
+        currentLBPower = leftBackPower;
+        currentRBPower = rightBackPower;
+
         // Send calculated powers to drivetrain subsystem
         robot.drivetrain.setPowers(leftFrontPower, rightFrontPower, leftBackPower, rightBackPower);
     }
@@ -248,7 +257,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.intake.stop();
         }
     }
-    /*
     // ==================== LAUNCHER CONTROLS ====================
 
     /**
@@ -349,7 +357,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Heading shows robot orientation (0° = starting direction)
      * - Velocities show both launchers (should be close to target RPM)
      */
-    /**
     private void updateTelemetry() {
         // Header
         telemetry.addLine("=== DYNAMOE 19889 TELEOP ===");
@@ -359,6 +366,15 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Shows which control mode is active and current robot orientation
         telemetry.addData("Drive Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
         telemetry.addData("Heading", "%.1f°", Math.toDegrees(follower.getHeading()));
+        telemetry.addLine();
+
+        // === MOTOR POWERS (DEBUG) ===
+        // Display power being sent to each wheel (helps diagnose drive issues)
+        telemetry.addLine("--- MOTOR POWERS ---");
+        telemetry.addData("LF (Left Front)", "%.2f", currentLFPower);
+        telemetry.addData("RF (Right Front)", "%.2f", currentRFPower);
+        telemetry.addData("LB (Left Back)", "%.2f", currentLBPower);
+        telemetry.addData("RB (Right Back)", "%.2f", currentRBPower);
         telemetry.addLine();
 
         // === LAUNCHER STATUS ===
@@ -396,5 +412,4 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Push all telemetry data to Driver Hub screen
         telemetry.update();
     }
-    */
 }

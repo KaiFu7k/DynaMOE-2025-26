@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.opmodes;
 import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.RobotHardware;
@@ -44,6 +45,11 @@ import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // Hardware and subsystems
+    private DcMotor leftFront = null;
+    private DcMotor leftBack = null;
+    private DcMotor rightBack = null;
+    private DcMotor rightFront = null;
+    private DcMotor intakeMotor = null;
     private RobotHardware robot;
     private Follower follower;
 
@@ -121,12 +127,14 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.updateSubsystems();
 
             // Process gamepad inputs and send commands to hardware
+            /**
             handleDriveControls();      // Mecanum drive (field/robot-centric)
             handleIntakeControls();     // Artifact intake/outtake
+             */
             handleLauncherControls();   // Launcher spin-up and feeding
 
             // Update Driver Hub display with current status
-            updateTelemetry();
+//            updateTelemetry();
 
             // Small delay to prevent CPU overload
             // Loop runs at ~100Hz (every 10ms)
@@ -159,6 +167,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Robot's heading is compensated using IMU, so controls stay consistent
      * - Driver doesn't need to adjust for robot rotation
      */
+    /**
     private void handleDriveControls() {
         // Get gamepad inputs
         // Y axis: Forward/backward (negated because gamepad Y is inverted)
@@ -225,20 +234,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // ==================== INTAKE CONTROLS ====================
 
-    /**
-     * Handles intake motor controls using gamepad triggers.
-     *
-     * INTAKE SYSTEM:
-     * - Single motor that spins to pull artifacts into the robot
-     * - Can run forward (intake) or reverse (outtake/eject)
-     * - Uses analog triggers for intuitive control (like gas/brake pedals)
-     *
-     * CONTROL BEHAVIOR:
-     * - Right trigger (RT): Pull artifacts in
-     * - Left trigger (LT): Push artifacts out (for corrections or ejecting)
-     * - Neither trigger: Motor stops automatically
-     * - Triggers are analog (0.0 to 1.0), but we use a threshold of 0.5 for on/off control
-     */
+
     private void handleIntakeControls() {
         if (gamepad1.right_trigger > 0.5) {
             // Intake mode: Pull artifacts into robot
@@ -252,7 +248,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.intake.stop();
         }
     }
-
+    /*
     // ==================== LAUNCHER CONTROLS ====================
 
     /**
@@ -265,6 +261,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Two velocity presets: CLOSE shot and FAR shot (different RPMs)
      *
      * WORKFLOW:
+     *
      * 1. Driver presses A to spin up launchers
      * 2. Wait for "Ready" indicator (motors reached target velocity)
      * 3. Press X or Y to feed left/right launcher
@@ -352,6 +349,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
      * - Heading shows robot orientation (0° = starting direction)
      * - Velocities show both launchers (should be close to target RPM)
      */
+    /**
     private void updateTelemetry() {
         // Header
         telemetry.addLine("=== DYNAMOE 19889 TELEOP ===");
@@ -398,4 +396,5 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Push all telemetry data to Driver Hub screen
         telemetry.update();
     }
+    */
 }

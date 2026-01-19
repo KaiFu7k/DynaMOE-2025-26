@@ -115,7 +115,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         robot.init(hardwareMap);
 
         // Kubar says this should fix brake
-        follower.getDrivetrain().startTeleopDrive();
+
 
         robot.logger.info("TeleOp", "Initialization complete");
 
@@ -154,10 +154,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
             // Update Driver Hub display with current status
             updateTelemetry();
-
-            // Small delay to prevent CPU overload
-            // Loop runs at ~100Hz (every 10ms)
-            sleep(10);
         }
 
         // === CLEANUP PHASE ===
@@ -199,12 +195,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         double rx = gamepad1.right_stick_x;
 
         // Toggle between field-centric and robot-centric drive modes
-        if (gamepad1.dpad_left) {
+        if (gamepad1.dpadDownWasPressed()) {
             fieldCentric = false;
-            sleep(200);  // Debounce to prevent multiple toggles
-        } else if (gamepad1.dpad_right) {
+        } else if (gamepad1.dpadRightWasPressed()) {
             fieldCentric = true;
-            sleep(200);
         }
 
         // Calculate motor powers based on drive mode
@@ -307,7 +301,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // === MANUAL SPEED ADJUSTMENT (PLAN A) ===
         // D-Pad Up/Down: Increase/decrease launcher speed in 50 RPM increments
         // Works whether launchers are spinning or not (pre-set before spin-up)
-        if (gamepad1.dpad_up) {
+        if (gamepad1.dpadUpWasPressed()) {
             manualLauncherSpeed += LAUNCHER_SPEED_INCREMENT;
             // Clamp to maximum safe speed
             if (manualLauncherSpeed > LAUNCHER_MAX_SPEED) {
@@ -319,9 +313,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
                 robot.logger.info("Launcher", String.format("Speed increased to %.0f RPM", manualLauncherSpeed));
             }
-            sleep(150);  // Debounce
         }
-        else if (gamepad1.dpad_down) {
+        else if (gamepad1.dpadDownWasPressed()) {
             manualLauncherSpeed -= LAUNCHER_SPEED_INCREMENT;
             // Clamp to minimum safe speed
             if (manualLauncherSpeed < LAUNCHER_MIN_SPEED) {
@@ -333,12 +326,11 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
                 robot.logger.info("Launcher", String.format("Speed decreased to %.0f RPM", manualLauncherSpeed));
             }
-            sleep(150);  // Debounce
         }
 
         // A button: Spin up launchers at current manual speed
         // Uses manualLauncherSpeed instead of preset close/far shot
-        if (gamepad1.a && !launcherActive) {
+        if (gamepad1.aWasPressed() && !launcherActive) {
             robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             launcherActive = true;
             robot.logger.info("Launcher", String.format("Spinning up at %.0f RPM", manualLauncherSpeed));
@@ -347,7 +339,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // B button: Stop launchers
         // Stops flywheels and feeders, saves battery power
         // Manual speed setting is preserved for next spin-up
-        if (gamepad1.b && launcherActive) {
+        if (gamepad1.bWasPressed() && launcherActive) {
             robot.launcher.stop();
             launcherActive = false;
             robot.logger.info("Launcher", "Stopped");
@@ -358,7 +350,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // 1. X is pressed
         // 2. Launchers are active (spinning)
         // 3. Launchers are ready (at target velocity)
-        if (gamepad1.x && launcherActive && robot.launcher.isReady()) {
+        if (gamepad1.xWasPressed() && launcherActive && robot.launcher.isReady()) {
             robot.launcher.startFeed(LauncherSide.LEFT);
             robot.logger.info("Launcher", "Feeding LEFT");
         }
@@ -366,7 +358,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Y button: Feed right launcher
         // Same conditions as X button, but feeds right side
         // Allows strategic artifact management (e.g., launch specific colors)
-        if (gamepad1.y && launcherActive && robot.launcher.isReady()) {
+        if (gamepad1.yWasPressed() && launcherActive && robot.launcher.isReady()) {
             robot.launcher.startFeed(LauncherSide.RIGHT);
             robot.logger.info("Launcher", "Feeding RIGHT");
         }
@@ -376,43 +368,39 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Also allows larger speed jumps with presets
 
         // D-pad up: Quick preset - Far shot (1350 RPM)
-        if (gamepad2.dpad_up) {
+        if (gamepad2.dpadUpWasPressed()) {
             manualLauncherSpeed = 1350;
             if (launcherActive) {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             }
             robot.logger.info("Launcher", "Preset: FAR shot (1350 RPM)");
-            sleep(200);  // Debounce
         }
 
         // D-pad down: Quick preset - Close shot (1200 RPM)
-        else if (gamepad2.dpad_down) {
+        else if (gamepad2.dpadDownWasPressed()) {
             manualLauncherSpeed = 1200;
             if (launcherActive) {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             }
             robot.logger.info("Launcher", "Preset: CLOSE shot (1200 RPM)");
-            sleep(200);  // Debounce
         }
 
         // D-pad left: Quick preset - Max range (1550 RPM)
-        else if (gamepad2.dpad_left) {
+        else if (gamepad2.dpadLeftWasPressed()) {
             manualLauncherSpeed = 1550;
             if (launcherActive) {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             }
             robot.logger.info("Launcher", "Preset: MAX range (1550 RPM)");
-            sleep(200);  // Debounce
         }
 
         // D-pad right: Quick preset - Min safe (900 RPM)
-        else if (gamepad2.dpad_right) {
+        else if (gamepad2.dpadRightWasPressed()) {
             manualLauncherSpeed = 900;
             if (launcherActive) {
                 robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             }
             robot.logger.info("Launcher", "Preset: MIN safe (900 RPM)");
-            sleep(200);  // Debounce
         }
     }
 
@@ -487,6 +475,18 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             // "Ready" indicator: Green light to feed artifacts
             // Only shows YES when both motors are within tolerance of target
             telemetry.addData("  Ready", robot.launcher.isReady() ? "YES" : "NO");
+
+            // === FEEDER DIAGNOSTICS ===
+            // Shows if feeders are actively running (helps diagnose servo issues)
+            telemetry.addData("  Feeding", robot.launcher.isFeeding() ? "YES" : "NO");
+            if (robot.launcher.isFeeding()) {
+                telemetry.addData("  Feed Progress", "%.0f%%", robot.launcher.getFeedProgress() * 100);
+            }
+
+            // Show feeding conditions for debugging
+            telemetry.addData("  X Pressed", gamepad1.xWasPressed() ? "YES" : "NO");
+            telemetry.addData("  Y Pressed", gamepad1.yWasPressed() ? "YES" : "NO");
+            telemetry.addData("  Can Feed", robot.launcher.isReady() ? "YES" : "NO");
         }
         telemetry.addLine();
 

@@ -451,21 +451,25 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // === MOTOR POWERS (DEBUG) ===
         // Display power being sent to each wheel (helps diagnose drive issues)
+        /*
         telemetry.addLine("--- MOTOR POWERS ---");
         telemetry.addData("LF (Left Front)", "%.2f", currentLFPower);
         telemetry.addData("RF (Right Front)", "%.2f", currentRFPower);
         telemetry.addData("LB (Left Back)", "%.2f", currentLBPower);
         telemetry.addData("RB (Right Back)", "%.2f", currentRBPower);
         telemetry.addLine();
+         */
 
         // === BRAKE MODE DIAGNOSTIC ===
         // Check if Pedro Pathing is overriding our brake mode settings
+        /*
         telemetry.addLine("--- BRAKE MODE STATUS ---");
         telemetry.addData("LF Brake Mode", robot.drivetrain.getLeftFrontDrive().getZeroPowerBehavior());
         telemetry.addData("RF Brake Mode", robot.drivetrain.getRightFrontDrive().getZeroPowerBehavior());
         telemetry.addData("LB Brake Mode", robot.drivetrain.getLeftBackDrive().getZeroPowerBehavior());
         telemetry.addData("RB Brake Mode", robot.drivetrain.getRightBackDrive().getZeroPowerBehavior());
         telemetry.addLine();
+         */
 
         // === LAUNCHER STATUS ===
         // Most critical info: tells drivers if system is ready to score

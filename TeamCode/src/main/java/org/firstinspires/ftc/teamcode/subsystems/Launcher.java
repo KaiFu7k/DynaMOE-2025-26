@@ -64,19 +64,19 @@ public class Launcher {
      */
     public void init(HardwareMap hardwareMap) {
         // Initialize launchers
-        leftLauncher = hardwareMap.get(DcMotorEx.class, "left_launcher");
-        rightLauncher = hardwareMap.get(DcMotorEx.class, "right_launcher");
+        leftLauncher = hardwareMap.get(DcMotorEx.class, "leftLauncher");
+        rightLauncher = hardwareMap.get(DcMotorEx.class, "rightLauncher");
 
         // Initialize feeders
-        leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
-        rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
+        leftFeeder = hardwareMap.get(CRServo.class, "leftFeeder");
+        rightFeeder = hardwareMap.get(CRServo.class, "rightFeeder");
 
         // Initialize diverter
         diverter = hardwareMap.get(Servo.class, "diverter");
 
         // Set motor directions
         leftLauncher.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightFeeder.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftFeeder.setDirection(CRServo.Direction.REVERSE);
 
         // Set brake behavior
         leftLauncher.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

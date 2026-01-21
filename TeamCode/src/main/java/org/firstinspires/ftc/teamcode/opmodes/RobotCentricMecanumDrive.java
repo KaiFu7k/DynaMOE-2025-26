@@ -43,10 +43,17 @@ public class RobotCentricMecanumDrive extends LinearOpMode {
         diverter = hardwareMap.get(Servo.class, "diverter");
 
         //reverse later
+<<<<<<< Updated upstream
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
         leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
         rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
+=======
+        rightBack.setDirection(DcMotor.Direction.REVERSE);
+        rightFront.setDirection(DcMotor.Direction.FORWARD);
+        leftFront.setDirection(DcMotor.Direction.REVERSE);
+        leftBack.setDirection(DcMotor.Direction.FORWARD);
+>>>>>>> Stashed changes
 
         rightLauncher.setDirection(DcMotor.Direction.FORWARD);
         leftLauncher.setDirection(DcMotor.Direction.REVERSE);

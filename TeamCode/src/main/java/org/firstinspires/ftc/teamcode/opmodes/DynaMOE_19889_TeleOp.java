@@ -114,9 +114,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         robot = new RobotHardware(telemetry);
         robot.init(hardwareMap);
 
-        // Kubar says this should fix brake
-
-
         robot.logger.info("TeleOp", "Initialization complete");
 
         // Display ready status to drivers

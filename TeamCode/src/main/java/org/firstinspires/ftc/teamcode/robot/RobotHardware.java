@@ -1,10 +1,12 @@
 package org.firstinspires.ftc.teamcode.robot;
 
+import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.subsystems.*;
 import org.firstinspires.ftc.teamcode.util.RobotLogger;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.ArtifactColor;
+import org.firstinspires.ftc.teamcode.util.FieldPositions;
 
 /**
  * RobotHardware - Main robot class
@@ -21,6 +23,7 @@ public class RobotHardware {
     public Launcher launcher;
     public Intake intake;
     public ArtifactManager artifactManager;
+    public LauncherAssist launcherAssist;  // Auto-alignment and velocity calculation
 
     // Logger (optional)
     public RobotLogger logger;
@@ -54,6 +57,17 @@ public class RobotHardware {
      * @param hardwareMap HardwareMap from OpMode
      */
     public void init(HardwareMap hardwareMap) {
+        init(hardwareMap, null, FieldPositions.Alliance.BLUE);
+    }
+
+    /**
+     * Initialize all hardware subsystems with LauncherAssist
+     * Call this during OpMode init phase
+     * @param hardwareMap HardwareMap from OpMode
+     * @param follower Pedro Pathing follower (for LauncherAssist)
+     * @param alliance Current alliance color
+     */
+    public void init(HardwareMap hardwareMap, Follower follower, FieldPositions.Alliance alliance) {
         logger.info("RobotHardware", "Initializing hardware...");
 
         try {
@@ -72,6 +86,14 @@ public class RobotHardware {
             // Configure default artifact preload
             artifactManager.configureDefaultPreload();
             logger.info("RobotHardware", "ArtifactManager configured");
+
+            // Initialize LauncherAssist if follower provided
+            if (follower != null) {
+                launcherAssist = new LauncherAssist(follower, alliance, telemetry);
+                logger.info("RobotHardware", "LauncherAssist initialized");
+            } else {
+                logger.warning("RobotHardware", "LauncherAssist not initialized (no follower provided)");
+            }
 
             isInitialized = true;
 
@@ -121,6 +143,9 @@ public class RobotHardware {
     public void updateSubsystems() {
         if (launcher != null && launcher.isInitialized()) {
             launcher.update();
+        }
+        if (launcherAssist != null) {
+            launcherAssist.update();
         }
     }
 

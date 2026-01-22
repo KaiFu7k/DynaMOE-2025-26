@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.RobotHardware;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
+import org.firstinspires.ftc.teamcode.util.FieldPositions;
 
 /**
  * TeleOp OpMode for DynaMOE Team 19889
@@ -68,6 +69,11 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     private static final double LAUNCHER_SPEED_INCREMENT = 50;  // RPM change per button press
     private double manualLauncherSpeed = 1200;  // Starting speed (close shot default)
 
+    // Auto-alignment state
+    private boolean autoAlignActive = false;   // Is auto-alignment engaged
+    private boolean autoVelocityMode = false;  // Auto velocity vs manual velocity
+    private FieldPositions.Alliance alliance = FieldPositions.Alliance.BLUE;  // Change based on match
+
     // Motor power tracking for telemetry
     private double currentLFPower = 0;
     private double currentRFPower = 0;
@@ -109,10 +115,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Provides IMU heading and pose tracking
         follower = Constants.createFollower(hardwareMap);
 
-
         // Initialize robot hardware (all subsystems: drivetrain, launcher, intake, etc.)
+        // Pass follower and alliance for LauncherAssist
         robot = new RobotHardware(telemetry);
-        robot.init(hardwareMap);
+        robot.init(hardwareMap, follower, alliance);
 
         robot.logger.info("TeleOp", "Initialization complete");
 
@@ -145,9 +151,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.updateSubsystems();
 
             // Process gamepad inputs and send commands to hardware
-            handleDriveControls();      // Mecanum drive (field/robot-centric)
-            handleIntakeControls();     // Artifact intake/outtake
-            handleLauncherControls();   // Launcher spin-up and feeding
+            handleDriveControls();          // Mecanum drive (field/robot-centric)
+            handleIntakeControls();         // Artifact intake/outtake
+            handleAutoAlignControls();      // Auto-alignment and velocity
+            handleLauncherControls();       // Launcher spin-up and feeding
 
             // Update Driver Hub display with current status
             updateTelemetry();
@@ -189,7 +196,15 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         double x = gamepad1.left_stick_x * 1.1;
 
         // Rotation: Right stick X controls spinning in place
-        double rx = gamepad1.right_stick_x;
+        // UNLESS auto-align is active, then use auto-rotation
+        double rx;
+        if (autoAlignActive && robot.launcherAssist != null) {
+            // Auto-alignment mode: override rotation with calculated value
+            rx = robot.launcherAssist.getRotationPower();
+        } else {
+            // Manual rotation mode: use right stick
+            rx = gamepad1.right_stick_x;
+        }
 
         // Toggle between field-centric and robot-centric drive modes
         if (gamepad1.dpadDownWasPressed()) {
@@ -249,7 +264,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // ==================== INTAKE CONTROLS ====================
 
-
     private void handleIntakeControls() {
         if (gamepad1.right_trigger > 0.5) {
             // Intake mode: Pull artifacts into robot
@@ -263,6 +277,77 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.intake.stop();
         }
     }
+
+    // ==================== AUTO-ALIGNMENT CONTROLS ====================
+
+    /**
+     * Handles auto-alignment and auto-velocity features.
+     *
+     * AUTO-ALIGNMENT:
+     * - Left Bumper: Toggle auto-align mode
+     * - When active, robot automatically rotates to face goal
+     * - Driver can still drive forward/backward/strafe while aligned
+     * - Shows distance, angle error, and alignment status
+     *
+     * AUTO-VELOCITY:
+     * - Right Bumper: Toggle auto-velocity mode
+     * - When active, launcher speed automatically adjusts based on distance to goal
+     * - When inactive, uses manual speed control (D-Pad Up/Down)
+     *
+     * WORKFLOW:
+     * 1. Press Left Bumper to start auto-align
+     * 2. Robot rotates to face goal (or press again to cancel)
+     * 3. Optionally press Right Bumper for auto-velocity
+     * 4. Press A to spin up launchers at recommended speed
+     * 5. Wait for alignment and "Ready" indicator
+     * 6. Press X/Y to launch
+     */
+    private void handleAutoAlignControls() {
+        if (robot.launcherAssist == null) {
+            return;  // LauncherAssist not initialized
+        }
+
+        // Left Bumper: Toggle auto-alignment
+        if (gamepad1.left_bumper) {
+            if (!autoAlignActive) {
+                autoAlignActive = true;
+                robot.logger.info("AutoAlign", "ENGAGED - Rotating to goal");
+            }
+        } else {
+            if (autoAlignActive) {
+                autoAlignActive = false;
+                robot.logger.info("AutoAlign", "DISENGAGED");
+            }
+        }
+
+        // Right Bumper: Toggle auto-velocity mode
+        if (gamepad1.rightBumperWasPressed()) {
+            autoVelocityMode = !autoVelocityMode;
+            if (autoVelocityMode) {
+                robot.logger.info("AutoVelocity", "ENABLED - Distance-based speed");
+            } else {
+                robot.logger.info("AutoVelocity", "DISABLED - Manual speed control");
+            }
+        }
+
+        // If auto-velocity is enabled, update manual launcher speed to match recommendation
+        if (autoVelocityMode) {
+            manualLauncherSpeed = robot.launcherAssist.getRecommendedVelocity();
+
+            // Clamp to safe range
+            if (manualLauncherSpeed < LAUNCHER_MIN_SPEED) {
+                manualLauncherSpeed = LAUNCHER_MIN_SPEED;
+            } else if (manualLauncherSpeed > LAUNCHER_MAX_SPEED) {
+                manualLauncherSpeed = LAUNCHER_MAX_SPEED;
+            }
+
+            // If launchers are already active, update velocity in real-time
+            if (launcherActive) {
+                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+            }
+        }
+    }
+
     // ==================== LAUNCHER CONTROLS ====================
 
     /**
@@ -434,6 +519,20 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addData("Heading", "%.1f°", Math.toDegrees(follower.getHeading()));
         telemetry.addLine();
 
+        // === AUTO-ALIGNMENT STATUS ===
+        if (robot.launcherAssist != null) {
+            telemetry.addData("Auto-Align", autoAlignActive ? "ACTIVE" : "Off");
+            telemetry.addData("Auto-Velocity", autoVelocityMode ? "ENABLED" : "Manual");
+
+            if (autoAlignActive || autoVelocityMode) {
+                telemetry.addData("  Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());
+                telemetry.addData("  Angle Error", "%.1f°", robot.launcherAssist.getAngleErrorDegrees());
+                telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES ✓" : "NO");
+                telemetry.addData("  In Launch Zone", robot.launcherAssist.isInLaunchZone() ? "YES" : "NO");
+            }
+            telemetry.addLine();
+        }
+
         // === MOTOR POWERS (DEBUG) ===
         // Display power being sent to each wheel (helps diagnose drive issues)
         /*
@@ -496,13 +595,13 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // === CONTROLS REMINDER ===
         // Quick reference for drivers (especially useful for backups/new drivers)
         telemetry.addLine("--- CONTROLS ---");
-        telemetry.addLine("Left Stick: Drive");
-        telemetry.addLine("Right Stick: Rotate");
+        telemetry.addLine("Left Stick: Drive | Right Stick: Rotate");
+        telemetry.addLine("LB: Auto-Align | RB: Auto-Velocity");
         telemetry.addLine("RT: Intake | LT: Outtake");
         telemetry.addLine("A: Launchers ON | B: OFF");
         telemetry.addLine("X: Feed Left | Y: Feed Right");
-        telemetry.addLine("D-Pad U/D: Speed +/- 50 RPM");
-        telemetry.addLine("D-Pad L/R: Toggle Drive Mode");
+        telemetry.addLine("D-Pad U/D: Speed ± 50 RPM");
+        telemetry.addLine("D-Pad Down/Right: Drive Mode");
 
         // Push all telemetry data to Driver Hub screen
         telemetry.update();

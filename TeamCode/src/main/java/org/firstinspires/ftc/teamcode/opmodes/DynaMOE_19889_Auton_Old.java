@@ -32,6 +32,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -56,7 +57,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  * 5. Press A to confirm
  * 6. Wait for field START
  */
-@Autonomous(name = "DynaMOE 19889 Auto", group = "Autonomous")
+@Disabled
+@Autonomous(name = "DynaMOE 19889 Auto Old", group = "Autonomous")
 public class DynaMOE_19889_Auton_Old extends LinearOpMode {
 
     // ==================== CONSTANTS ====================

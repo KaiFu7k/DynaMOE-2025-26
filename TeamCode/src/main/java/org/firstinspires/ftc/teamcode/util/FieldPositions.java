@@ -5,7 +5,19 @@ import com.pedropathing.geometry.Pose;
 /**
  * Centralized storage for all field positions and coordinates
  * All coordinates in inches, angles in radians
- * Origin (0,0) is center of field, positive X = right, positive Y = away from driver
+ *
+ * COORDINATE SYSTEM (2025-26 DECODE season):
+ * - Origin (0, 0) is at BOTTOM-LEFT corner of field
+ * - X: 0 to 144 inches (left to right)
+ * - Y: 0 to 144 inches (bottom to top)
+ * - Center of field: (72, 72)
+ * - Heading: 0° = right (+X), 90° = up (+Y), 180° = left (-X), 270° = down (-Y)
+ *
+ * FIELD LAYOUT:
+ * - Blue goal: top-left corner (near 0, 144)
+ * - Red goal: top-right corner (near 144, 144)
+ * - Blue alliance starts: left/bottom side
+ * - Red alliance starts: right/bottom side
  *
  * IMPORTANT: Tune these values for your specific field!
  */
@@ -13,31 +25,39 @@ public class FieldPositions {
 
     // ==================== STARTING POSITIONS ====================
     // Where robot begins autonomous
+    // Robots start near bottom of field, facing toward goals (up/+Y direction)
 
-    public static final Pose BLUE_GOAL_SIDE_START = new Pose(-36, 60, Math.toRadians(270));
-    public static final Pose RED_GOAL_SIDE_START = new Pose(36, 60, Math.toRadians(270));
-    public static final Pose BLUE_PERIMETER_START = new Pose(-60, 36, Math.toRadians(0));
-    public static final Pose RED_PERIMETER_START = new Pose(60, 36, Math.toRadians(180));
+    // Blue Goal Side: Left side of field, near blue goal corner
+    public static final Pose BLUE_GOAL_SIDE_START = new Pose(36, 132, Math.toRadians(90));
+    // Red Goal Side: Right side of field, near red goal corner
+    public static final Pose RED_GOAL_SIDE_START = new Pose(108, 132, Math.toRadians(90));
+    // Blue Perimeter: Left edge of field
+    public static final Pose BLUE_PERIMETER_START = new Pose(12, 108, Math.toRadians(0));
+    // Red Perimeter: Right edge of field
+    public static final Pose RED_PERIMETER_START = new Pose(132, 108, Math.toRadians(180));
 
     // ==================== LAUNCH POSITIONS ====================
     // Where robot shoots artifacts (must be inside LAUNCH ZONE)
+    // Launch zone is diamond-shaped in center of field
 
-    public static final Pose BLUE_LAUNCH_POSE = new Pose(-24, 48, Math.toRadians(315));
-    public static final Pose RED_LAUNCH_POSE = new Pose(24, 48, Math.toRadians(45));
+    // Blue launch: Aim toward blue goal (top-left, heading ~135°)
+    public static final Pose BLUE_LAUNCH_POSE = new Pose(48, 96, Math.toRadians(135));
+    // Red launch: Aim toward red goal (top-right, heading ~45°)
+    public static final Pose RED_LAUNCH_POSE = new Pose(96, 96, Math.toRadians(45));
 
     // ==================== LEAVE POSITIONS ====================
     // Final position to score LEAVE points (must be off LAUNCH LINE)
 
-    public static final Pose BLUE_LEAVE_POSE = new Pose(-36, 24, Math.toRadians(0));
-    public static final Pose RED_LEAVE_POSE = new Pose(36, 24, Math.toRadians(180));
+    public static final Pose BLUE_LEAVE_POSE = new Pose(48, 58, Math.toRadians(180));
+    public static final Pose RED_LEAVE_POSE = new Pose(108, 72, Math.toRadians(90));
 
     // ==================== GOAL POSITIONS ====================
     // Physical goal locations on field (for auto-alignment)
-    // Field is 144" x 144", origin at center
-    // Goals are in top corners (positive Y direction)
+    // Field is 144" x 144", origin at bottom-left corner
+    // Goals are in top corners
 
-    public static final Pose BLUE_GOAL_POSITION = new Pose(-60, 60, 0);  // Top-left corner
-    public static final Pose RED_GOAL_POSITION = new Pose(60, 60, 0);    // Top-right corner
+    public static final Pose BLUE_GOAL_POSITION = new Pose(0, 144, Math.toRadians(135));   // Top-left corner
+    public static final Pose RED_GOAL_POSITION = new Pose(144, 144, Math.toRadians(45));   // Top-right corner
 
     // Goal physical dimensions (from game manual)
     public static final double GOAL_HEIGHT_BOTTOM_INCHES = 38.75;  // Bottom of opening
@@ -49,12 +69,12 @@ public class FieldPositions {
     // Diamond-shaped launch zone in center of field
     // Approximate boundaries based on field diagram
 
-    // Launch zone is roughly a diamond from center
+    // Launch zone is roughly a diamond centered at (72, 72)
     // These are approximate - tune based on actual field measurements
-    private static final double LAUNCH_ZONE_MIN_X = -40;
-    private static final double LAUNCH_ZONE_MAX_X = 40;
-    private static final double LAUNCH_ZONE_MIN_Y = 20;
-    private static final double LAUNCH_ZONE_MAX_Y = 65;
+    private static final double LAUNCH_ZONE_MIN_X = 32;
+    private static final double LAUNCH_ZONE_MAX_X = 112;
+    private static final double LAUNCH_ZONE_MIN_Y = 72;
+    private static final double LAUNCH_ZONE_MAX_Y = 120;
 
     // ==================== ENUMS ====================
 

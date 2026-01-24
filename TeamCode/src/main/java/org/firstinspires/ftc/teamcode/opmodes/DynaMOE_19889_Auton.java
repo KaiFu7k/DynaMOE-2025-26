@@ -34,7 +34,6 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.RobotHardware;
 import org.firstinspires.ftc.teamcode.util.FieldPositions;
 import org.firstinspires.ftc.teamcode.util.FieldPositions.*;
-import org.firstinspires.ftc.teamcode.util.MotifDetector;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.*;
 import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
@@ -51,12 +50,13 @@ import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
  *
  * MATCH DAY WORKFLOW:
  * 1. Place robot at chosen starting position
- * 2. Select "DynaMOE 19889 Auto [Refactored]" from Driver Hub
+ * 2. Select "DynaMOE 19889 Auto" from Driver Hub
  * 3. Press INIT
  * 4. Use D-Pad to select position (UP=Blue Goal, DOWN=Blue Perimeter, LEFT=Red Goal, RIGHT=Red Perimeter)
- * 5. Use Y to cycle MOTIF pattern (GPP/PGP/PPG)
- * 6. Press A to confirm
- * 7. Wait for field START
+ * 5. Press A to confirm
+ * 6. Wait for field START
+ *
+ * NOTE: MOTIF detection is DISABLED - All artifacts shot into goal regardless of pattern
  */
 @Autonomous(name = "DynaMOE 19889 Auto", group = "Autonomous")
 public class DynaMOE_19889_Auton extends LinearOpMode {
@@ -70,7 +70,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private RobotHardware robot;
     private Follower follower;
-    private MotifDetector motifDetector;
+    // NOTE: MotifDetector removed - no longer checking patterns
 
     // ==================== CONFIGURATION ====================
 
@@ -91,9 +91,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot = new RobotHardware(telemetry);
         robot.init(hardwareMap);
 
-        // Initialize MOTIF detector
-        motifDetector = new MotifDetector(telemetry);
-        motifDetector.init(hardwareMap);
+        // NOTE: MOTIF detector removed - ignoring patterns, shooting all artifacts
 
         // Initialize Pedro Pathing
         follower = Constants.createFollower(hardwareMap);
@@ -108,6 +106,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         telemetry.addLine("=== READY TO START ===");
         telemetry.addData("Position", startPosition);
         telemetry.addData("Status", configurationConfirmed ? "CONFIRMED" : "Ready");
+        telemetry.addData("Strategy", "SHOOT ALL ARTIFACTS (ignore MOTIF)");
         telemetry.addData("Start Pose", String.format("(%.1f, %.1f, %.1f°)",
             startPose.getX(), startPose.getY(), Math.toDegrees(startPose.getHeading())));
         telemetry.update();
@@ -116,34 +115,42 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        // Detect MOTIF
-        Motif detectedMotif = motifDetector.detectMotif();
+        // Update follower once at start to initialize
+        follower.update();
 
         robot.logger.info("Autonomous", "Starting autonomous");
         robot.logger.info("Autonomous", "Position: " + startPosition);
-        robot.logger.info("Autonomous", "MOTIF: " + detectedMotif);
+        robot.logger.info("Autonomous", "Strategy: SHOOT ALL (ignore MOTIF)");
 
         telemetry.addLine("=== STARTING AUTONOMOUS ===");
         telemetry.addData("Position", startPosition);
-        telemetry.addData("Detected MOTIF", detectedMotif);
+        telemetry.addData("Strategy", "SHOOT ALL");
         telemetry.update();
-        sleep(500);
+       // sleep(500);
 
         // Execute autonomous based on starting position
+        // NOTE: No MOTIF parameter - shooting all artifacts
         if (FieldPositions.isGoalSide(startPosition)) {
-            executeGoalSideAuto(detectedMotif);
+            executeGoalSideAuto();
         } else {
-            executePerimeterSideAuto(detectedMotif);
+            executePerimeterSideAuto();
         }
 
+        // Show final position
+        Pose finalPose = follower.getPose();
         telemetry.addLine("=== AUTONOMOUS COMPLETE ===");
+        telemetry.addLine();
+        telemetry.addLine("--- FINAL POSITION ---");
+        telemetry.addData("X", "%.1f inches", finalPose.getX());
+        telemetry.addData("Y", "%.1f inches", finalPose.getY());
+        telemetry.addData("Heading", "%.1f degrees", Math.toDegrees(finalPose.getHeading()));
+        telemetry.addLine();
         telemetry.addData("Artifacts Scored", artifactsScored);
         telemetry.update();
 
         robot.logger.info("Autonomous", "Complete! Scored " + artifactsScored + " artifacts");
-
-        // Clean up
-        motifDetector.close();
+        robot.logger.info("Autonomous", String.format("Final position: (%.1f, %.1f, %.1f°)",
+            finalPose.getX(), finalPose.getY(), Math.toDegrees(finalPose.getHeading())));
     }
 
     // ==================== CONFIGURATION ====================
@@ -169,11 +176,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
                 sleep(200);
             }
 
-            // MOTIF selection (Y button cycles)
-            if (gamepad1.y) {
-                motifDetector.cycleMotif();
-                sleep(200);
-            }
+            // NOTE: MOTIF selection removed - no longer needed
 
             // Confirm selection with A button
             if (gamepad1.a) {
@@ -192,15 +195,22 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
     private void displayConfiguration() {
-        telemetry.addLine("=== DynaMOE 19889 AUTON CONFIG [REFACTORED] ===");
+        // Get current start pose for display
+        Pose startPose = FieldPositions.getStartPose(startPosition);
+
+        telemetry.addLine("=== DynaMOE 19889 AUTON CONFIG ===");
         telemetry.addLine();
         telemetry.addData("Selected Position", startPosition);
+        telemetry.addData("Start X", "%.1f inches", startPose.getX());
+        telemetry.addData("Start Y", "%.1f inches", startPose.getY());
+        telemetry.addData("Start Heading", "%.1f degrees", Math.toDegrees(startPose.getHeading()));
+        telemetry.addLine();
         telemetry.addData("Status", configurationConfirmed ? "✓ CONFIRMED" : "Press A to confirm");
         telemetry.addLine();
-        telemetry.addData("MOTIF (manual)", motifDetector.getCurrentMotif());
+        telemetry.addData("Strategy", "SHOOT ALL ARTIFACTS");
+        telemetry.addData("MOTIF Check", "DISABLED");
         telemetry.addLine();
-        telemetry.addData("Left Slot", robot.artifactManager.getSlotContents(LauncherSide.LEFT));
-        telemetry.addData("Right Slot", robot.artifactManager.getSlotContents(LauncherSide.RIGHT));
+        telemetry.addData("Artifacts to Score", ARTIFACTS_TO_SCORE);
         telemetry.addLine();
         telemetry.addLine("--- CONTROLS ---");
         telemetry.addLine("D-Pad UP:    Blue Goal Side");
@@ -208,7 +218,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         telemetry.addLine("D-Pad LEFT:  Red Goal Side");
         telemetry.addLine("D-Pad RIGHT: Red Perimeter Side");
         telemetry.addLine();
-        telemetry.addLine("Y: Cycle MOTIF (GPP/PGP/PPG)");
         telemetry.addLine("A: CONFIRM Selection");
         telemetry.addLine();
         telemetry.addLine("--- FIELD LAYOUT ---");
@@ -226,23 +235,28 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     /**
      * Autonomous routine for GOAL-SIDE starting position
-     * 1. Drive to LAUNCH ZONE
-     * 2. Score all preloaded artifacts
-     * 3. Move off LAUNCH LINE to earn LEAVE points
+     * 1. Move to LAUNCH ZONE (also earns LEAVE points by leaving start area)
+     * 2. Launch all artifacts
+     * 3. Move to final/parking position
      */
-    private void executeGoalSideAuto(Motif motif) {
+    private void executeGoalSideAuto() {
         robot.logger.info("Autonomous", "Executing GOAL-SIDE routine");
 
         // Step 1: Navigate from starting position to LAUNCH ZONE
+        // This also earns LEAVE points since we're leaving the starting area
         Pose launchPose = FieldPositions.getLaunchPose(alliance);
-        moveToPosition(launchPose, "Moving to LAUNCH ZONE");
+        robot.logger.info("Autonomous", String.format("Launch target: (%.1f, %.1f, %.1f°)",
+            launchPose.getX(), launchPose.getY(), Math.toDegrees(launchPose.getHeading())));
+        moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
 
         // Step 2: Score all artifacts
-        scoreAllArtifacts(motif);
+        scoreAllArtifacts();
 
-        // Step 3: Exit LAUNCH LINE to score LEAVE points
-        Pose leavePose = FieldPositions.getLeavePose(alliance);
-        moveToPosition(leavePose, "Leaving LAUNCH LINE");
+        // Step 3: Move to final/parking position
+        Pose finalPose = FieldPositions.getLeavePose(alliance);
+        robot.logger.info("Autonomous", String.format("Final target: (%.1f, %.1f, %.1f°)",
+            finalPose.getX(), finalPose.getY(), Math.toDegrees(finalPose.getHeading())));
+        moveToPosition(finalPose, "Step 3: Moving to FINAL position");
 
         // Clean up
         robot.launcher.stop();
@@ -253,15 +267,15 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
      * 1. Score artifacts (already on LAUNCH LINE)
      * 2. Move off LAUNCH LINE to earn LEAVE points
      */
-    private void executePerimeterSideAuto(Motif motif) {
+    private void executePerimeterSideAuto() {
         robot.logger.info("Autonomous", "Executing PERIMETER-SIDE routine");
 
         telemetry.addLine("Starting PERIMETER-SIDE Autonomous");
         telemetry.addLine("Already in LAUNCH ZONE!");
         telemetry.update();
 
-        // Step 1: Score artifacts
-        scoreAllArtifacts(motif);
+        // Step 1: Score artifacts (no MOTIF checking)
+        scoreAllArtifacts();
 
         // Step 2: Exit LAUNCH LINE to score LEAVE points
         Pose leavePose = FieldPositions.getLeavePose(alliance);
@@ -276,49 +290,84 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     private void moveToPosition(Pose targetPose, String description) {
         robot.logger.info("Movement", description);
 
-        telemetry.addLine(description);
-        telemetry.addData("Target", String.format("(%.1f, %.1f, %.1f°)",
+        // Get current pose for logging
+        Pose currentPose = follower.getPose();
+        robot.logger.info("Movement", String.format("FROM: (%.1f, %.1f, %.1f°)",
+            currentPose.getX(), currentPose.getY(), Math.toDegrees(currentPose.getHeading())));
+        robot.logger.info("Movement", String.format("TO: (%.1f, %.1f, %.1f°)",
             targetPose.getX(), targetPose.getY(), Math.toDegrees(targetPose.getHeading())));
-        telemetry.update();
 
-        // Build path
+        // Build path using a new Pose with same values (avoid reference issues)
+        Pose startPose = new Pose(currentPose.getX(), currentPose.getY(), currentPose.getHeading());
+
         PathChain path = follower.pathBuilder()
             .addPath(new BezierLine(
-                follower.getPose(),
+                startPose,
                 targetPose
             ))
             .setLinearHeadingInterpolation(
-                follower.getPose().getHeading(),
+                startPose.getHeading(),
                 targetPose.getHeading()
             )
             .build();
 
-        // Follow path
-        follower.followPath(path);
+        // Follow path (true = hold end position)
+        follower.followPath(path, true);
+
+        // Debug: Check if follower started
+        robot.logger.info("Movement", "followPath called, isBusy=" + follower.isBusy());
 
         // Update follower until path is complete
         while (follower.isBusy() && opModeIsActive()) {
             follower.update();
-
-            Pose currentPose = follower.getPose();
-            telemetry.addLine(description);
-            telemetry.addData("Current", String.format("(%.1f, %.1f, %.1f°)",
-                currentPose.getX(), currentPose.getY(), Math.toDegrees(currentPose.getHeading())));
-            telemetry.update();
-
-            sleep(10);
+            updatePositionTelemetry(description, targetPose);
         }
 
+        // Debug: Check why loop exited
+        robot.logger.info("Movement", "Loop exited, isBusy=" + follower.isBusy() + ", opModeIsActive=" + opModeIsActive());
+
+        // Final position update
+        updatePositionTelemetry(description + " - COMPLETE", targetPose);
         robot.logger.info("Movement", description + " complete");
+    }
+
+    /**
+     * Updates telemetry with current robot position and target
+     */
+    private void updatePositionTelemetry(String status, Pose targetPose) {
+        Pose currentPose = follower.getPose();
+
+        telemetry.addLine("=== ROBOT POSITION ===");
+        telemetry.addData("Status", status);
+        telemetry.addLine();
+        telemetry.addLine("--- CURRENT ---");
+        telemetry.addData("X", "%.1f inches", currentPose.getX());
+        telemetry.addData("Y", "%.1f inches", currentPose.getY());
+        telemetry.addData("Heading", "%.1f degrees", Math.toDegrees(currentPose.getHeading()));
+        telemetry.addLine();
+        telemetry.addLine("--- TARGET ---");
+        telemetry.addData("X", "%.1f inches", targetPose.getX());
+        telemetry.addData("Y", "%.1f inches", targetPose.getY());
+        telemetry.addData("Heading", "%.1f degrees", Math.toDegrees(targetPose.getHeading()));
+        telemetry.addLine();
+
+        // Calculate distance to target
+        double dx = targetPose.getX() - currentPose.getX();
+        double dy = targetPose.getY() - currentPose.getY();
+        double distance = Math.sqrt(dx * dx + dy * dy);
+        telemetry.addData("Distance to Target", "%.1f inches", distance);
+
+        telemetry.update();
     }
 
     // ==================== LAUNCHER CONTROL ====================
 
-    private void scoreAllArtifacts(Motif motif) {
-        robot.logger.info("Scoring", "Starting artifact scoring");
+    private void scoreAllArtifacts() {
+        robot.logger.info("Scoring", "Starting artifact scoring - SHOOT ALL (ignore MOTIF)");
 
         telemetry.addLine("=== SCORING ARTIFACTS ===");
-        telemetry.addData("Target MOTIF", motif);
+        telemetry.addData("Strategy", "SHOOT ALL");
+        telemetry.addData("MOTIF Check", "DISABLED");
         telemetry.update();
 
         // Spin up launchers
@@ -329,29 +378,29 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
             return;
         }
 
-        // Get pattern sequence
-        ArtifactColor[] pattern = robot.artifactManager.getPatternSequence(motif);
+        // Simple shooting order: LEFT, RIGHT, LEFT
+        // This ensures we shoot all 3 preloaded artifacts regardless of color
+        LauncherSide[] shootingOrder = {
+            LauncherSide.LEFT,
+            LauncherSide.RIGHT,
+            LauncherSide.LEFT
+        };
 
-        robot.logger.info("Scoring", "Pattern: " + java.util.Arrays.toString(pattern));
+        robot.logger.info("Scoring", "Shooting order: LEFT -> RIGHT -> LEFT");
 
-        // Launch artifacts in pattern order
-        for (int i = 0; i < pattern.length; i++) {
-            ArtifactColor targetColor = pattern[i];
+        // Launch all artifacts in simple order
+        for (int i = 0; i < shootingOrder.length; i++) {
+            LauncherSide side = shootingOrder[i];
 
-            // Find which side has this color
-            LauncherSide side = robot.artifactManager.findArtifactSide(targetColor);
+            robot.logger.info("Scoring", "Artifact " + (i+1) + " from " + side);
 
-            if (side == null) {
-                robot.logger.error("Scoring", "Could not find " + targetColor + " artifact!");
-                telemetry.addLine("ERROR: Could not find " + targetColor);
-                telemetry.update();
+            // Launch the artifact (color doesn't matter)
+            scoreArtifact(side, i + 1);
+
+            // Stop if we've run out of artifacts
+            if (artifactsScored >= ARTIFACTS_TO_SCORE) {
                 break;
             }
-
-            robot.logger.info("Scoring", "Position " + (i+1) + ": " + targetColor + " from " + side);
-
-            // Launch the artifact
-            scoreArtifact(side, targetColor, i + 1);
         }
 
         robot.logger.info("Scoring", "Scored " + artifactsScored + " artifacts");
@@ -359,9 +408,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private boolean spinUpLaunchers() {
         robot.logger.info("Launcher", "Spinning up launchers");
-
-        telemetry.addLine("Spinning up launchers...");
-        telemetry.update();
 
         // Start launchers (close shot)
         robot.launcher.spinUp(true);
@@ -371,11 +417,20 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         // Wait for launchers to reach minimum velocity
         while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
             double[] velocities = robot.launcher.getVelocities();
+            Pose currentPose = follower.getPose();
 
-            telemetry.addLine("Spinning up launchers...");
+            telemetry.addLine("=== SPINNING UP LAUNCHERS ===");
+            telemetry.addLine();
+            telemetry.addLine("--- ROBOT POSITION ---");
+            telemetry.addData("X", "%.1f inches", currentPose.getX());
+            telemetry.addData("Y", "%.1f inches", currentPose.getY());
+            telemetry.addData("Heading", "%.1f degrees", Math.toDegrees(currentPose.getHeading()));
+            telemetry.addLine();
+            telemetry.addLine("--- LAUNCHER STATUS ---");
             telemetry.addData("Left Velocity", "%.0f RPM", velocities[0]);
             telemetry.addData("Right Velocity", "%.0f RPM", velocities[1]);
-            telemetry.addData("Time", "%.1f / %.1f", launcherSpinupTimer.seconds(), LAUNCHER_SPINUP_TIMEOUT);
+            telemetry.addData("Spinup Time", "%.1f / %.1f sec", launcherSpinupTimer.seconds(), LAUNCHER_SPINUP_TIMEOUT);
+            telemetry.addData("Ready", robot.launcher.isReady() ? "YES" : "NO");
             telemetry.update();
 
             if (robot.launcher.isReady()) {
@@ -391,17 +446,22 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         return false;
     }
 
-    private void scoreArtifact(LauncherSide side, ArtifactColor color, int artifactNum) {
-        // Remove artifact from slot
+    private void scoreArtifact(LauncherSide side, int artifactNum) {
+        // Remove artifact from slot (we don't care about color)
         ArtifactColor removedColor = robot.artifactManager.removeNext(side);
+        Pose currentPose = follower.getPose();
 
-        if (removedColor != color) {
-            robot.logger.warning("Scoring", "Expected " + color + " but got " + removedColor);
-        }
-
-        telemetry.addData("Scoring Artifact", artifactNum + " / " + ARTIFACTS_TO_SCORE);
-        telemetry.addData("Color", color);
-        telemetry.addData("Using", side);
+        telemetry.addLine("=== SCORING ARTIFACT ===");
+        telemetry.addLine();
+        telemetry.addLine("--- ROBOT POSITION ---");
+        telemetry.addData("X", "%.1f inches", currentPose.getX());
+        telemetry.addData("Y", "%.1f inches", currentPose.getY());
+        telemetry.addData("Heading", "%.1f degrees", Math.toDegrees(currentPose.getHeading()));
+        telemetry.addLine();
+        telemetry.addLine("--- ARTIFACT INFO ---");
+        telemetry.addData("Artifact", "%d / %d", artifactNum, ARTIFACTS_TO_SCORE);
+        telemetry.addData("Color", removedColor != null ? removedColor : "EMPTY");
+        telemetry.addData("Feeder", side);
         telemetry.update();
 
         // Feed artifact (blocking)
@@ -409,7 +469,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
         artifactsScored++;
 
-        robot.logger.info("Scoring", "Artifact " + artifactNum + " scored: " + color);
+        robot.logger.info("Scoring", "Artifact " + artifactNum + " scored from " + side);
 
         // Small delay between shots
         sleep(200);

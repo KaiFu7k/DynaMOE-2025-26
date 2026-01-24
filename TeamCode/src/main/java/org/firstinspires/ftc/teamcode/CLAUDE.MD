@@ -82,6 +82,8 @@ LAUNCHER_FAR_TARGET_VELOCITY = 1350    // RPM for far shots
 ### Adjusting Field Positions
 Edit `util/FieldPositions.java` - coordinates are in inches
 
+See [Field Coordinate System](#field-coordinate-system) section below for the coordinate diagram.
+
 ### Changing Artifact Preload Configuration
 Edit `subsystems/ArtifactManager.java` or call:
 ```java
@@ -138,6 +140,63 @@ telemetry.update();
 - Autonomous navigation library
 - Configured in `pedroPathing/Constants.java`
 - Uses field coordinates from `FieldPositions.java`
+
+## Field Coordinate System
+
+**DECODE 2025-26 Season Coordinate System:**
+
+![Field Coordinate Diagram](assets/field_coordinates.png)
+
+```
+COORDINATE SYSTEM:
+- Origin (0, 0): Bottom-left corner of field
+- X: 0 to 144 inches (left to right)
+- Y: 0 to 144 inches (bottom to top)
+- Center: (72, 72)
+
+HEADING (robot orientation):
+- 0°   = facing right  (+X direction)
+- 90°  = facing up     (+Y direction, toward goals)
+- 180° = facing left   (-X direction)
+- 270° = facing down   (-Y direction)
+
+FIELD LAYOUT:
+- Blue goal: top-left corner (0, 144)
+- Red goal: top-right corner (144, 144)
+- Blue alliance: left side of field
+- Red alliance: right side of field
+
+         (0,144)                    (144,144)
+            +---------+-------+---------+
+            |  BLUE   |       |   RED   |
+            |  GOAL   |       |   GOAL  |
+            +---------+       +---------+
+            |                           |
+            |         (72,72)           |
+            |           +               |
+            |                           |
+            |                           |
+            +---------+---------+-------+
+         (0,0)                      (144,0)
+```
+
+### Current Starting Positions (FieldPositions.java)
+
+| Position | X | Y | Heading | Description |
+|----------|---|---|---------|-------------|
+| Blue Goal Side | 36 | 132 | 90° | Near blue goal, facing up |
+| Red Goal Side | 108 | 132 | 90° | Near red goal, facing up |
+| Blue Perimeter | 12 | 108 | 0° | Left edge, facing right |
+| Red Perimeter | 132 | 108 | 180° | Right edge, facing left |
+
+### Launch Positions
+
+| Position | X | Y | Heading | Description |
+|----------|---|---|---------|-------------|
+| Blue Launch | 48 | 96 | 135° | Aiming at blue goal |
+| Red Launch | 96 | 96 | 45° | Aiming at red goal |
+
+**NOTE:** Save the field coordinate diagram image to `assets/field_coordinates.png` in the teamcode directory.
 
 ### MOTIF System
 - Game-specific: Pattern detection for artifact scoring

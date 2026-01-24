@@ -52,7 +52,6 @@ public class LauncherAssist {
 
     // PID Constants for rotation control
     private static final double KP = 0.015;  // Proportional gain (tune this first)
-    private static final double KI = 0.001;  // Integral gain (eliminates steady-state error)
     private static final double KD = 0.003;  // Derivative gain (dampens oscillation)
     private static final double INTEGRAL_MAX = 0.1;  // Anti-windup: max integral contribution
 
@@ -163,17 +162,13 @@ public class LauncherAssist {
         double proportional = KP * angleError;
 
         // Integral term: accumulated error over time (with anti-windup)
-        integralSum += angleError * dt;
         // Clamp integral to prevent windup
-        integralSum = Math.max(-INTEGRAL_MAX / KI, Math.min(INTEGRAL_MAX / KI, integralSum));
-        double integral = KI * integralSum;
-
         // Derivative term: rate of change of error
         double derivative = KD * (angleError - previousError) / dt;
         previousError = angleError;
 
         // Combine PID terms
-        double rotationPower = proportional + integral + derivative;
+        double rotationPower = proportional + derivative;
 
         // Clamp to maximum rotation speed
         rotationPower = Math.max(-ROTATION_SPEED, Math.min(ROTATION_SPEED, rotationPower));

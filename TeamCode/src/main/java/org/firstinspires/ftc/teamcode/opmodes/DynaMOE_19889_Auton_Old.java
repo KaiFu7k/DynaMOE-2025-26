@@ -84,21 +84,25 @@ public class DynaMOE_19889_Auton_Old extends LinearOpMode {
 
     // ==================== FIELD COORDINATES ====================
     // NOTE: All coordinates in inches, angles in radians
-    // Origin (0,0) is center of field, positive X = right, positive Y = away from driver
+    // COORDINATE SYSTEM (2025-26 DECODE season):
+    // - Origin (0, 0) is at BOTTOM-LEFT corner of field
+    // - X: 0 to 144 inches (left to right)
+    // - Y: 0 to 144 inches (bottom to top)
+    // - Heading: 0° = right (+X), 90° = up (+Y), 180° = left, 270° = down
 
     // Starting positions - where robot begins autonomous (TUNE THESE FOR YOUR FIELD!)
-    private static final Pose BLUE_GOAL_SIDE_START = new Pose(-36, 60, Math.toRadians(270));      // Blue, near goal
-    private static final Pose RED_GOAL_SIDE_START = new Pose(36, 60, Math.toRadians(270));        // Red, near goal
-    private static final Pose BLUE_PERIMETER_START = new Pose(-60, 36, Math.toRadians(0));        // Blue, on perimeter
-    private static final Pose RED_PERIMETER_START = new Pose(60, 36, Math.toRadians(180));        // Red, on perimeter
+    private static final Pose BLUE_GOAL_SIDE_START = new Pose(36, 132, Math.toRadians(90));       // Blue, near goal
+    private static final Pose RED_GOAL_SIDE_START = new Pose(108, 132, Math.toRadians(90));       // Red, near goal
+    private static final Pose BLUE_PERIMETER_START = new Pose(12, 108, Math.toRadians(0));        // Blue, on perimeter
+    private static final Pose RED_PERIMETER_START = new Pose(132, 108, Math.toRadians(180));      // Red, on perimeter
 
     // Launch positions - where robot shoots artifacts (must be inside LAUNCH ZONE)
-    private static final Pose BLUE_LAUNCH_POSE = new Pose(-24, 48, Math.toRadians(315));          // Blue launch spot
-    private static final Pose RED_LAUNCH_POSE = new Pose(24, 48, Math.toRadians(45));             // Red launch spot
+    private static final Pose BLUE_LAUNCH_POSE = new Pose(48, 96, Math.toRadians(135));           // Blue launch spot
+    private static final Pose RED_LAUNCH_POSE = new Pose(96, 96, Math.toRadians(45));             // Red launch spot
 
     // Leave positions - final position to score LEAVE points (must be off LAUNCH LINE)
-    private static final Pose BLUE_LEAVE_POSE = new Pose(-36, 24, Math.toRadians(0));
-    private static final Pose RED_LEAVE_POSE = new Pose(36, 24, Math.toRadians(180));
+    private static final Pose BLUE_LEAVE_POSE = new Pose(36, 72, Math.toRadians(90));
+    private static final Pose RED_LEAVE_POSE = new Pose(108, 72, Math.toRadians(90));
 
     // ==================== CONFIGURATION ENUMS ====================
 

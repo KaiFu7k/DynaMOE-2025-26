@@ -19,10 +19,10 @@ import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 public class Launcher {
 
     // Constants
-    public static final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1200;  // RPM for close shots
-    public static final double LAUNCHER_CLOSE_MIN_VELOCITY = 1175;     // Minimum acceptable RPM
-    public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1350;    // RPM for far shots
-    public static final double LAUNCHER_FAR_MIN_VELOCITY = 1325;       // Minimum for far shots
+    public static final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1400;  // RPM for close shots
+    public static final double LAUNCHER_CLOSE_MIN_VELOCITY = 1375;     // Minimum acceptable RPM
+    public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1550;    // RPM for far shots
+    public static final double LAUNCHER_FAR_MIN_VELOCITY = 1525;       // Minimum for far shots
 
     private static final double FEED_TIME_SECONDS = 0.80;  // Time to feed one artifact
     private static final double STOP_SPEED = 0.0;

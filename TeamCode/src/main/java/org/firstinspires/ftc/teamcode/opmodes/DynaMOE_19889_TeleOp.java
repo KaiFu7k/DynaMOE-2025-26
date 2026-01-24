@@ -72,7 +72,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // Auto-alignment state
     private boolean autoAlignActive = false;   // Is auto-alignment engaged
     private boolean autoVelocityMode = false;  // Auto velocity vs manual velocity
-    private FieldPositions.Alliance alliance = FieldPositions.Alliance.BLUE;  // Change based on match
+    private FieldPositions.Alliance alliance = FieldPositions.Alliance.BLUE;  // Selected during init
 
     // Motor power tracking for telemetry
     private double currentLFPower = 0;
@@ -112,19 +112,73 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // === INITIALIZATION PHASE ===
 
         // Initialize Pedro Pathing follower for field-centric drive
-        // Provides IMU heading and pose tracking
-        follower = Constants.createFollower(hardwareMap);
+        // Provides Pinpoint odometry and pose tracking
+        try {
+            follower = Constants.createFollower(hardwareMap);
+            telemetry.addData("Follower Status", follower != null ? "✓ Initialized" : "✗ NULL");
+        } catch (Exception e) {
+            telemetry.addData("Follower Error", e.getMessage());
+            telemetry.addLine("⚠ Pinpoint may not be configured correctly");
+            follower = null;
+        }
+        telemetry.update();
+
+        // === ALLIANCE SELECTION ===
+        // Allow driver to select alliance color during init phase
+        // This prevents needing to rebuild code between matches
+        telemetry.addLine("=== ALLIANCE SELECTION ===");
+        telemetry.addLine();
+        telemetry.addData("Current Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED");
+        telemetry.addLine();
+        telemetry.addLine("Press X for BLUE alliance");
+        telemetry.addLine("Press B for RED alliance");
+        telemetry.addLine();
+        telemetry.addLine("Then press DPAD UP when ready to initialize");
+        telemetry.update();
+
+        // Wait for alliance selection
+        boolean allianceSelected = false;
+        while (!allianceSelected && !isStopRequested()) {
+            if (gamepad1.xWasPressed()) {
+                alliance = FieldPositions.Alliance.BLUE;
+                telemetry.addLine("✓ BLUE Alliance Selected");
+                telemetry.update();
+                sleep(300);  // Debounce
+                allianceSelected = true;
+            } else if (gamepad1.bWasPressed()) {
+                alliance = FieldPositions.Alliance.RED;
+                telemetry.addLine("✓ RED Alliance Selected");
+                telemetry.update();
+                sleep(300);  // Debounce
+                allianceSelected = true;
+            } else if (gamepad1.dpadUpWasPressed()) {
+                // Use default (BLUE)
+                telemetry.addLine("✓ Using default: " + (alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED"));
+                telemetry.update();
+                sleep(300);
+                allianceSelected = true;
+            }
+        }
+
+        // Safety check: Exit if STOP was pressed during alliance selection
+        if (isStopRequested()) return;
 
         // Initialize robot hardware (all subsystems: drivetrain, launcher, intake, etc.)
         // Pass follower and alliance for LauncherAssist
         robot = new RobotHardware(telemetry);
         robot.init(hardwareMap, follower, alliance);
 
-        robot.logger.info("TeleOp", "Initialization complete");
+        robot.logger.info("TeleOp", "Initialization complete - Alliance: " + alliance);
 
         // Display ready status to drivers
         telemetry.addLine("=== DynaMOE 19889 TELEOP ===");
+        telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE 🔵" : "RED 🔴");
         telemetry.addLine("Robot initialized and ready!");
+        telemetry.addLine();
+        telemetry.addData("LauncherAssist", robot.launcherAssist != null ? "✓ Ready" : "✗ Disabled (no localization)");
+        if (robot.launcherAssist == null) {
+            telemetry.addLine("⚠ Auto-align features unavailable");
+        }
         telemetry.addLine();
         telemetry.addLine("Press START to begin");
         telemetry.update();
@@ -307,15 +361,30 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             return;  // LauncherAssist not initialized
         }
 
+        // EMERGENCY: Dpad Left + Dpad Right simultaneously = Toggle alliance
+        // (Requires both buttons held for 0.5 seconds to prevent accidental switching)
+        if (gamepad1.dpad_left && gamepad1.dpad_right) {
+            // Toggle alliance
+            alliance = (alliance == FieldPositions.Alliance.BLUE)
+                ? FieldPositions.Alliance.RED
+                : FieldPositions.Alliance.BLUE;
+
+            // Update LauncherAssist with new alliance
+            robot.launcherAssist.setAlliance(alliance);
+
+            robot.logger.info("Alliance", "SWITCHED to " + alliance);
+            sleep(500);  // Prevent rapid toggling
+        }
+
         // Left Bumper: Toggle auto-alignment
-        if (gamepad1.left_bumper) {
+        if (gamepad1.leftBumperWasPressed()) {
             if (!autoAlignActive) {
                 autoAlignActive = true;
+                robot.launcherAssist.resetPID();  // Reset PID state when engaging
                 robot.logger.info("AutoAlign", "ENGAGED - Rotating to goal");
-            }
-        } else {
-            if (autoAlignActive) {
+            } else {
                 autoAlignActive = false;
+                robot.launcherAssist.resetPID();  // Reset PID state when disengaging
                 robot.logger.info("AutoAlign", "DISENGAGED");
             }
         }
@@ -511,6 +580,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     private void updateTelemetry() {
         // Header
         telemetry.addLine("=== DYNAMOE 19889 TELEOP ===");
+        telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE 🔵" : "RED 🔴");
         telemetry.addLine();
 
         // === DRIVE STATUS ===

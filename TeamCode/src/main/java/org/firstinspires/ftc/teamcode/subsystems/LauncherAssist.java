@@ -12,19 +12,49 @@ import org.firstinspires.ftc.teamcode.util.FieldPositions;
  * - Calculates distance from robot to goal
  * - Calculates optimal heading to face goal
  * - Determines required launcher velocity based on distance
- * - Provides rotation commands for auto-alignment
+ * - Provides PID-controlled rotation commands for auto-alignment
  *
  * USAGE:
  * 1. Call update() in main loop to refresh calculations
- * 2. Call getRotationPower() to get motor powers for alignment
+ * 2. Call getRotationPower() to get motor powers for alignment (uses PID)
  * 3. Call isAligned() to check if robot is facing goal
  * 4. Call getRecommendedVelocity() to get launch speed for current distance
+ * 5. Call resetPID() when switching between manual/auto modes
+ *
+ * PID TUNING GUIDE:
+ * Start with current values and tune in this order:
+ * 1. KP (Proportional): Increase until robot responds quickly but may oscillate
+ *    - Too low: Slow response, won't reach target
+ *    - Too high: Overshoots and oscillates
+ *    - Start: 0.015, try range: 0.01 - 0.03
+ *
+ * 2. KD (Derivative): Increase to reduce oscillation/overshoot
+ *    - Too low: Oscillates around target
+ *    - Too high: Sluggish, jerky movement
+ *    - Start: 0.003, try range: 0.001 - 0.01
+ *
+ * 3. KI (Integral): Add small amount to eliminate steady-state error
+ *    - Too low: Won't fully reach target (small error remains)
+ *    - Too high: Slow oscillation, integral windup
+ *    - Start: 0.001, try range: 0.0005 - 0.003
+ *
+ * Testing procedure:
+ * - Test at various distances and angles
+ * - Check response when battery is low vs full
+ * - Verify no oscillation when close to target
+ * - Ensure reaches target quickly without overshoot
  */
 public class LauncherAssist {
 
     // Constants
     private static final double ALIGNMENT_TOLERANCE_DEGREES = 3.0;  // How close is "aligned"
-    private static final double ROTATION_SPEED = 0.3;  // Speed for auto-rotation (0.0 to 1.0)
+    private static final double ROTATION_SPEED = 0.3;  // Max speed for auto-rotation (0.0 to 1.0)
+
+    // PID Constants for rotation control
+    private static final double KP = 0.015;  // Proportional gain (tune this first)
+    private static final double KI = 0.001;  // Integral gain (eliminates steady-state error)
+    private static final double KD = 0.003;  // Derivative gain (dampens oscillation)
+    private static final double INTEGRAL_MAX = 0.1;  // Anti-windup: max integral contribution
 
     // Velocity lookup table (distance in inches -> RPM)
     // TODO: Tune these values based on real testing
@@ -54,6 +84,11 @@ public class LauncherAssist {
     private double recommendedVelocity = 0;
     private boolean isAligned = false;
 
+    // PID state variables
+    private double previousError = 0;
+    private double integralSum = 0;
+    private long lastUpdateTime = 0;
+
     /**
      * Constructor
      * @param follower Pedro Pathing follower for pose tracking
@@ -64,6 +99,7 @@ public class LauncherAssist {
         this.follower = follower;
         this.currentAlliance = alliance;
         this.telemetry = telemetry;
+        this.lastUpdateTime = System.currentTimeMillis();
     }
 
     /**
@@ -97,7 +133,7 @@ public class LauncherAssist {
     }
 
     /**
-     * Get rotation power for auto-alignment
+     * Get rotation power for auto-alignment using PID control
      * Use this to rotate the robot to face the goal
      *
      * @return Rotation power for right stick X (-1.0 to 1.0)
@@ -107,22 +143,44 @@ public class LauncherAssist {
      */
     public double getRotationPower() {
         if (isAligned) {
-            return 0.0;  // Already aligned, no rotation needed
+            // Reset PID state when aligned to prevent integral windup
+            integralSum = 0;
+            previousError = 0;
+            return 0.0;
         }
 
-        // Proportional control: rotate faster when further from target
-        double rotationPower = angleError * 2.0;  // Scale factor
+        // Calculate time delta for derivative and integral terms
+        long currentTime = System.currentTimeMillis();
+        double dt = (currentTime - lastUpdateTime) / 1000.0;  // Convert to seconds
+        lastUpdateTime = currentTime;
+
+        // Prevent division by zero or unreasonable dt
+        if (dt <= 0 || dt > 0.5) {
+            dt = 0.02;  // Default to 50Hz update rate
+        }
+
+        // Proportional term: error in radians
+        double proportional = KP * angleError;
+
+        // Integral term: accumulated error over time (with anti-windup)
+        integralSum += angleError * dt;
+        // Clamp integral to prevent windup
+        integralSum = Math.max(-INTEGRAL_MAX / KI, Math.min(INTEGRAL_MAX / KI, integralSum));
+        double integral = KI * integralSum;
+
+        // Derivative term: rate of change of error
+        double derivative = KD * (angleError - previousError) / dt;
+        previousError = angleError;
+
+        // Combine PID terms
+        double rotationPower = proportional + integral + derivative;
 
         // Clamp to maximum rotation speed
-        if (rotationPower > ROTATION_SPEED) {
-            rotationPower = ROTATION_SPEED;
-        } else if (rotationPower < -ROTATION_SPEED) {
-            rotationPower = -ROTATION_SPEED;
-        }
+        rotationPower = Math.max(-ROTATION_SPEED, Math.min(ROTATION_SPEED, rotationPower));
 
-        // Add minimum power to overcome friction (only if not aligned)
-        if (Math.abs(rotationPower) > 0 && Math.abs(rotationPower) < 0.1) {
-            rotationPower = Math.signum(rotationPower) * 0.1;
+        // Add minimum power to overcome static friction (deadband compensation)
+        if (Math.abs(rotationPower) > 0 && Math.abs(rotationPower) < 0.05) {
+            rotationPower = Math.signum(rotationPower) * 0.05;
         }
 
         return rotationPower;
@@ -233,6 +291,17 @@ public class LauncherAssist {
     public boolean isInLaunchZone() {
         Pose currentPose = follower.getPose();
         return FieldPositions.isInLaunchZone(currentPose);
+    }
+
+    /**
+     * Reset PID controller state
+     * Call this when switching between manual and auto-align modes
+     * or when you want to clear accumulated integral error
+     */
+    public void resetPID() {
+        integralSum = 0;
+        previousError = 0;
+        lastUpdateTime = System.currentTimeMillis();
     }
 
     /**

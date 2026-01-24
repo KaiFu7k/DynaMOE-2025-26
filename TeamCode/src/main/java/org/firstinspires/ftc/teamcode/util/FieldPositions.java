@@ -51,6 +51,11 @@ public class FieldPositions {
     public static final Pose BLUE_LEAVE_POSE = new Pose(48, 58, Math.toRadians(180));
     public static final Pose RED_LEAVE_POSE = new Pose(108, 72, Math.toRadians(90));
 
+    // ==================== SPIKE POSITIONS ====================
+    // Positions of artifacts on the field
+    public static final Pose BLUE_SPIKE_MIDDLE = new Pose(15, 58, Math.toRadians(180));
+    public static final Pose BLUE_PARK_POSE = new Pose(48, 36, Math.toRadians(180));
+
     // ==================== GOAL POSITIONS ====================
     // Physical goal locations on field (for auto-alignment)
     // Field is 144" x 144", origin at bottom-left corner
@@ -128,6 +133,20 @@ public class FieldPositions {
      */
     public static Pose getLeavePose(Alliance alliance) {
         return (alliance == Alliance.BLUE) ? BLUE_LEAVE_POSE : RED_LEAVE_POSE;
+    }
+
+    /**
+     * Get spike pose based on alliance (middle spike)
+     */
+    public static Pose getSpikeMiddlePose(Alliance alliance) {
+        return (alliance == Alliance.BLUE) ? BLUE_SPIKE_MIDDLE : null; // Add Red if needed
+    }
+
+    /**
+     * Get final parking pose based on alliance
+     */
+    public static Pose getParkPose(Alliance alliance) {
+        return (alliance == Alliance.BLUE) ? BLUE_PARK_POSE : RED_LEAVE_POSE;
     }
 
     /**

@@ -35,7 +35,7 @@ public class Sampleauto extends OpMode {
     @Override
     public void loop() {
         follower.update(); // Update Pedro Pathing
-        autonomousPathUpdate(); // Update autonomous state machine
+        pathState = autonomousPathUpdate(); // Update autonomous state machine
 
         // Log values to Panels and Driver Station
         panelsTelemetry.debug("Path State", pathState);
@@ -63,9 +63,28 @@ public class Sampleauto extends OpMode {
     }
 
 
-    public void autonomousPathUpdate() {
-        // Add your state machine Here
-        // Access paths with paths.pathName
-        // Refer to the Pedro Pathing Docs (Auto Example) for an example state machine
+    public int autonomousPathUpdate() {
+        switch (pathState) {
+            case 0:
+                // Start the first path
+                follower.followPath(paths.Path1);
+                setPathState(1);
+                break;
+
+            case 1:
+                // Check if the follower is done with the path
+                if (!follower.isBusy()) {
+                    // Robot has arrived!
+                    setPathState(-1); // End the state machine
+                }
+                break;
+        }
+        return pathState;
+    }
+
+    // Helper method to reset timers if needed (common in Pedro)
+    public void setPathState(int state) {
+        pathState = state;
+        // You could also reset a timer here for time-based actions
     }
 }

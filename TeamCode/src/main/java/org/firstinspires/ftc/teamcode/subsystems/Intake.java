@@ -13,8 +13,8 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 public class Intake {
 
     // Constants
-    public static final double DEFAULT_INTAKE_POWER = 0.5;
-    public static final double DEFAULT_OUTTAKE_POWER = -0.5;
+    public static final double DEFAULT_INTAKE_POWER = 1;
+    public static final double DEFAULT_OUTTAKE_POWER = -1;
 
     // Hardware
     private DcMotor intakeMotor;
@@ -38,10 +38,10 @@ public class Intake {
      * Initialize hardware from HardwareMap
      */
     public void init(HardwareMap hardwareMap) {
-        intakeMotor = hardwareMap.get(DcMotor.class, "intake");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
 
         // Set motor direction
-        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         // Set brake behavior
         intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

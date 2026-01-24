@@ -58,12 +58,12 @@ states/           - AprilTag vision and state machines
 **CRITICAL:** These names must exactly match the Driver Hub hardware configuration!
 
 ### Motors
-- `left_front_drive`, `right_front_drive`, `left_back_drive`, `right_back_drive` (DcMotor)
-- `left_launcher`, `right_launcher` (DcMotorEx - requires velocity control)
-- `intake` (DcMotor)
+- `leftFront`, `rightFront`, `leftBack`, `rightBack` (DcMotor)
+- `leftLauncher`, `rightLauncher` (DcMotorEx - requires velocity control)
+- `intakeMotor` (DcMotor)
 
 ### Servos
-- `left_feeder`, `right_feeder` (CRServo - continuous rotation)
+- `leftFeeder`, `rightFeeder` (CRServo - continuous rotation)
 - `diverter` (Servo - standard servo)
 
 ### Sensors

@@ -48,11 +48,13 @@ public class LauncherAssist {
 
     // Constants
     private static final double ALIGNMENT_TOLERANCE_DEGREES = 3.0;  // How close is "aligned"
-    private static final double ROTATION_SPEED = 0.3;  // Max speed for auto-rotation (0.0 to 1.0)
+    private static final double ROTATION_SPEED = 0.5;  // Max speed for auto-rotation (0.0 to 1.0)
+    private static final double MIN_ROTATION_POWER = 0.15;  // Minimum power to overcome static friction
 
     // PID Constants for rotation control
-    private static final double KP = 0.015;  // Proportional gain (tune this first)
-    private static final double KD = 0.003;  // Derivative gain (dampens oscillation)
+    // KP increased significantly since angleError is in radians (45° = 0.785 rad)
+    private static final double KP = 0.8;  // Proportional gain (tune this first)
+    private static final double KD = 0.05;  // Derivative gain (dampens oscillation)
     private static final double INTEGRAL_MAX = 0.1;  // Anti-windup: max integral contribution
 
     // Velocity lookup table (distance in inches -> RPM)
@@ -87,6 +89,7 @@ public class LauncherAssist {
     private double previousError = 0;
     private double integralSum = 0;
     private long lastUpdateTime = 0;
+    private double lastRotationPower = 0;  // Debug: track last calculated power
 
     /**
      * Constructor
@@ -121,8 +124,10 @@ public class LauncherAssist {
         angleToGoal = Math.atan2(dy, dx);
 
         // Calculate angle error (how far off from facing goal)
+        // Note: Pedro Pathing heading is negated compared to standard math convention
+        // So we add the heading instead of subtracting it
         // Normalize to -PI to +PI range
-        angleError = normalizeAngle(angleToGoal - currentPose.getHeading());
+        angleError = normalizeAngle(angleToGoal + currentPose.getHeading());
 
         // Check if aligned (within tolerance)
         isAligned = Math.abs(Math.toDegrees(angleError)) < ALIGNMENT_TOLERANCE_DEGREES;
@@ -174,9 +179,12 @@ public class LauncherAssist {
         rotationPower = Math.max(-ROTATION_SPEED, Math.min(ROTATION_SPEED, rotationPower));
 
         // Add minimum power to overcome static friction (deadband compensation)
-        if (Math.abs(rotationPower) > 0 && Math.abs(rotationPower) < 0.05) {
-            rotationPower = Math.signum(rotationPower) * 0.05;
+        if (Math.abs(rotationPower) > 0.01 && Math.abs(rotationPower) < MIN_ROTATION_POWER) {
+            rotationPower = Math.signum(rotationPower) * MIN_ROTATION_POWER;
         }
+
+        // Debug: store for telemetry
+        lastRotationPower = rotationPower;
 
         return rotationPower;
     }
@@ -300,6 +308,29 @@ public class LauncherAssist {
     }
 
     /**
+     * Get the last calculated rotation power (for telemetry/debug)
+     */
+    public double getLastRotationPower() {
+        return lastRotationPower;
+    }
+
+    /**
+     * Get the target angle to goal (for telemetry/debug)
+     * @return Target angle in degrees
+     */
+    public double getTargetAngleDegrees() {
+        return Math.toDegrees(angleToGoal);
+    }
+
+    /**
+     * Get the current robot heading (for telemetry/debug)
+     * @return Current heading in degrees
+     */
+    public double getCurrentHeadingDegrees() {
+        return Math.toDegrees(follower.getPose().getHeading());
+    }
+
+    /**
      * Update telemetry with launcher assist status
      */
     public void updateTelemetry() {
@@ -308,6 +339,7 @@ public class LauncherAssist {
         telemetry.addLine("=== LAUNCHER ASSIST ===");
         telemetry.addData("Distance", "%.1f in", distanceToGoal);
         telemetry.addData("Angle Error", "%.1f°", Math.toDegrees(angleError));
+        telemetry.addData("Rotation Power", "%.3f", lastRotationPower);
         telemetry.addData("Aligned", isAligned ? "YES" : "NO");
         telemetry.addData("Recommended RPM", "%.0f", recommendedVelocity);
         telemetry.addData("In Launch Zone", isInLaunchZone() ? "YES" : "NO");

@@ -596,7 +596,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
             if (autoAlignActive || autoVelocityMode) {
                 telemetry.addData("  Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());
+                telemetry.addData("  Current Heading", "%.1f°", robot.launcherAssist.getCurrentHeadingDegrees());
+                telemetry.addData("  Target Angle", "%.1f°", robot.launcherAssist.getTargetAngleDegrees());
                 telemetry.addData("  Angle Error", "%.1f°", robot.launcherAssist.getAngleErrorDegrees());
+                telemetry.addData("  Rotation Power", "%.3f", robot.launcherAssist.getLastRotationPower());
                 telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES ✓" : "NO");
                 telemetry.addData("  In Launch Zone", robot.launcherAssist.isInLaunchZone() ? "YES" : "NO");
             }

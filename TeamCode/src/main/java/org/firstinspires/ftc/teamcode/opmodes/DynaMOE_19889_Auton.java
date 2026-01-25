@@ -137,6 +137,9 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     private void executeGoalSideAuto() {
         robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine");
 
+        // Reset counter for this run
+        artifactsScored = 0;
+
         // Step 1: Navigate to LAUNCH ZONE and Score Preloads
         Pose launchPose = FieldPositions.getLaunchPose(alliance);
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
@@ -179,9 +182,19 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
     private void executePerimeterSideAuto() {
-        scoreAllArtifacts();
-        Pose leavePose = FieldPositions.getLeavePose(alliance);
-        moveToPosition(leavePose, "Leaving LAUNCH LINE");
+        robot.logger.info("Autonomous", "Executing PERIMETER-SIDE routine (far shot)");
+
+        // Reset counter for this run
+        artifactsScored = 0;
+
+        // Step 1: Move to perimeter launch position
+        Pose launchPose = FieldPositions.getPerimeterLaunchPose(alliance);
+        moveToPosition(launchPose, "Step 1: Moving to LAUNCH position");
+
+        // Step 2: Score preloads with far shot
+        scoreAllArtifactsFar();
+
+        // Clean up
         robot.launcher.stop();
         robot.intake.stop();
     }
@@ -215,8 +228,16 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     // ==================== LAUNCHER CONTROL ====================
 
     private void scoreAllArtifacts() {
-        if (!spinUpLaunchers()) return;
+        if (!spinUpLaunchers(true)) return;  // close shot
+        launchArtifacts();
+    }
 
+    private void scoreAllArtifactsFar() {
+        if (!spinUpLaunchers(false)) return;  // far shot
+        launchArtifacts();
+    }
+
+    private void launchArtifacts() {
         LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
 
         for (int i = 0; i < shootingOrder.length; i++) {
@@ -225,13 +246,13 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         }
     }
 
-    private boolean spinUpLaunchers() {
-        robot.launcher.spinUp(true);
+    private boolean spinUpLaunchers(boolean closeShot) {
+        robot.launcher.spinUp(closeShot);
         launcherSpinupTimer.reset();
 
         while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
             if (robot.launcher.isReady()) {
-                robot.intake.intake(); 
+                robot.intake.intake();
                 return true;
             }
             follower.update();

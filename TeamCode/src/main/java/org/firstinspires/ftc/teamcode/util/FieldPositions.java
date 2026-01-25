@@ -31,30 +31,43 @@ public class FieldPositions {
     public static final Pose BLUE_GOAL_SIDE_START = new Pose(36, 132, Math.toRadians(90));
     // Red Goal Side: Right side of field, near red goal corner
     public static final Pose RED_GOAL_SIDE_START = new Pose(108, 132, Math.toRadians(90));
-    // Blue Perimeter: Left edge of field
-    public static final Pose BLUE_PERIMETER_START = new Pose(12, 108, Math.toRadians(0));
-    // Red Perimeter: Right edge of field
-    public static final Pose RED_PERIMETER_START = new Pose(132, 108, Math.toRadians(180));
+    // Blue Perimeter: Bottom edge of field, facing up
+    public static final Pose BLUE_PERIMETER_START = new Pose(48, 9, Math.toRadians(90));
+    // Red Perimeter: Bottom edge of field, facing up
+    public static final Pose RED_PERIMETER_START = new Pose(96, 9, Math.toRadians(90));
 
     // ==================== LAUNCH POSITIONS ====================
     // Where robot shoots artifacts (must be inside LAUNCH ZONE)
     // Launch zone is diamond-shaped in center of field
 
-    // Blue launch: Aim toward blue goal (top-left, heading ~135°)
+    // Blue launch (goal side): Aim toward blue goal (top-left, heading ~135°)
     public static final Pose BLUE_LAUNCH_POSE = new Pose(48, 96, Math.toRadians(135));
-    // Red launch: Aim toward red goal (top-right, heading ~45°)
+    // Blue launch (perimeter side): Far shot position, aim toward blue goal (~110° calculated from atan2)
+    public static final Pose BLUE_PERIMETER_LAUNCH_POSE = new Pose(48, 15, Math.toRadians(110));
+    // Red launch (goal side): Aim toward red goal (top-right, heading ~45°)
     public static final Pose RED_LAUNCH_POSE = new Pose(96, 96, Math.toRadians(45));
+    // Red launch (perimeter side): Far shot position, aim toward red goal (~70° calculated from atan2)
+    public static final Pose RED_PERIMETER_LAUNCH_POSE = new Pose(96, 15, Math.toRadians(70));
 
     // ==================== LEAVE POSITIONS ====================
     // Final position to score LEAVE points (must be off LAUNCH LINE)
+    // Blue faces left (180°), Red faces right (0°) - mirrored across center
 
     public static final Pose BLUE_LEAVE_POSE = new Pose(48, 58, Math.toRadians(180));
-    public static final Pose RED_LEAVE_POSE = new Pose(108, 72, Math.toRadians(90));
+    public static final Pose RED_LEAVE_POSE = new Pose(96, 58, Math.toRadians(0));
 
     // ==================== SPIKE POSITIONS ====================
     // Positions of artifacts on the field
+    // Mirrored: Red_X = 144 - Blue_X, heading flips 180° to 0°
+
     public static final Pose BLUE_SPIKE_MIDDLE = new Pose(15, 58, Math.toRadians(180));
+    public static final Pose RED_SPIKE_MIDDLE = new Pose(129, 58, Math.toRadians(0));
+
+    // ==================== PARK POSITIONS ====================
+    // Final parking positions after scoring
+
     public static final Pose BLUE_PARK_POSE = new Pose(48, 36, Math.toRadians(180));
+    public static final Pose RED_PARK_POSE = new Pose(96, 36, Math.toRadians(0));
 
     // ==================== GOAL POSITIONS ====================
     // Physical goal locations on field (for auto-alignment)
@@ -122,10 +135,17 @@ public class FieldPositions {
     }
 
     /**
-     * Get launch pose based on alliance
+     * Get launch pose based on alliance (for goal side)
      */
     public static Pose getLaunchPose(Alliance alliance) {
         return (alliance == Alliance.BLUE) ? BLUE_LAUNCH_POSE : RED_LAUNCH_POSE;
+    }
+
+    /**
+     * Get perimeter launch pose based on alliance (for far shots)
+     */
+    public static Pose getPerimeterLaunchPose(Alliance alliance) {
+        return (alliance == Alliance.BLUE) ? BLUE_PERIMETER_LAUNCH_POSE : RED_PERIMETER_LAUNCH_POSE;
     }
 
     /**
@@ -139,14 +159,14 @@ public class FieldPositions {
      * Get spike pose based on alliance (middle spike)
      */
     public static Pose getSpikeMiddlePose(Alliance alliance) {
-        return (alliance == Alliance.BLUE) ? BLUE_SPIKE_MIDDLE : null; // Add Red if needed
+        return (alliance == Alliance.BLUE) ? BLUE_SPIKE_MIDDLE : RED_SPIKE_MIDDLE;
     }
 
     /**
      * Get final parking pose based on alliance
      */
     public static Pose getParkPose(Alliance alliance) {
-        return (alliance == Alliance.BLUE) ? BLUE_PARK_POSE : RED_LEAVE_POSE;
+        return (alliance == Alliance.BLUE) ? BLUE_PARK_POSE : RED_PARK_POSE;
     }
 
     /**

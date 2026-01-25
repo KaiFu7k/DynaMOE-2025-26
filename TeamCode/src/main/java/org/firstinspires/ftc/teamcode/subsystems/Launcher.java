@@ -22,7 +22,7 @@ public class Launcher {
     public static final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1150;  // RPM for close shots
     public static final double LAUNCHER_CLOSE_MIN_VELOCITY = 1100;     // Minimum acceptable RPM
     public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1520;    // RPM for far shots
-    public static final double LAUNCHER_FAR_MIN_VELOCITY = 1500;       // Minimum for far shots
+    public static final double LAUNCHER_FAR_MIN_VELOCITY = 1450;       // Minimum for far shots (wider margin for reliability)
 
     private static final double FEED_TIME_SECONDS = 0.80;  // Time to feed one artifact
     private static final double STOP_SPEED = 0.0;

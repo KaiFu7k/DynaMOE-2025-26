@@ -129,56 +129,86 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     /**
      * Extended GOAL-SIDE routine:
-     * 1. Score Preloads
-     * 2. Intake 3 artifacts from Spike
-     * 3. Score 3 collected artifacts
-     * 4. Park
+     * 1. Score 3 Preloads
+     * 2. Intake 3 artifacts from TOP spike (Y=84)
+     * 3. Score 3 artifacts
+     * 4. Intake 3 artifacts from MIDDLE spike (Y=58)
+     * 5. Score 3 artifacts
+     * 6. Intake 3 artifacts from BOTTOM spike (Y=36)
+     * 7. Score 3 artifacts
+     * 8. Park
      */
     private void executeGoalSideAuto() {
         robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine");
 
-        // Reset counter for this run
-        artifactsScored = 0;
+        // Get alliance-specific coordinates (Blue uses these directly, Red mirrors X)
+        double launchX = (alliance == Alliance.BLUE) ? 48 : 96;
+        double spikeX = (alliance == Alliance.BLUE) ? 15 : 129;
+        double parkX = (alliance == Alliance.BLUE) ? 20 : 124;
+        double heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
+        double launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
 
-        // Step 1: Navigate to LAUNCH ZONE and Score Preloads
-        Pose launchPose = FieldPositions.getLaunchPose(alliance);
+        Pose launchPose = new Pose(launchX, 96, launchHeading);
+
+        // === SCORE PRELOADS ===
+        artifactsScored = 0;
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
         scoreAllArtifacts();
 
-        // Step 2: Move to intermediate position to prepare for intake run
-        Pose leavePose = FieldPositions.getLeavePose(alliance); // (48, 58, 180)
-        moveToPosition(leavePose, "Step 2: Positioning for intake run");
+        // === TOP SPIKE RUN (Y=84) ===
+        Pose topIntermediatePose = new Pose(launchX, 84, heading);
+        Pose topSpikePose = new Pose(spikeX, 84, heading);
 
-        // Step 3: Intake 3 artifacts at middle spike
-        robot.logger.info("Autonomous", "Starting intake run");
+        moveToPosition(topIntermediatePose, "Step 2: Moving to TOP spike area");
         robot.intake.intake();
-        
-        // Manually update manager (simulating intake)
+        addSimulatedArtifacts();
+        moveToPosition(topSpikePose, "Step 3: Intaking at TOP SPIKE");
+
+        moveToPosition(launchPose, "Step 4: Returning to LAUNCH ZONE");
+        robot.intake.stop();
+        artifactsScored = 0;
+        scoreAllArtifacts();
+
+        // === MIDDLE SPIKE RUN (Y=58) ===
+        Pose middleIntermediatePose = new Pose(launchX, 58, heading);
+        Pose middleSpikePose = new Pose(spikeX, 58, heading);
+
+        moveToPosition(middleIntermediatePose, "Step 5: Moving to MIDDLE spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(middleSpikePose, "Step 6: Intaking at MIDDLE SPIKE");
+
+        moveToPosition(launchPose, "Step 7: Returning to LAUNCH ZONE");
+        robot.intake.stop();
+        artifactsScored = 0;
+        scoreAllArtifacts();
+
+        // === BOTTOM SPIKE RUN (Y=36) ===
+        Pose bottomIntermediatePose = new Pose(launchX, 36, heading);
+        Pose bottomSpikePose = new Pose(spikeX, 36, heading);
+
+        moveToPosition(bottomIntermediatePose, "Step 8: Moving to BOTTOM spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(bottomSpikePose, "Step 9: Intaking at BOTTOM SPIKE");
+
+        moveToPosition(launchPose, "Step 10: Returning to LAUNCH ZONE");
+        robot.intake.stop();
+        artifactsScored = 0;
+        scoreAllArtifacts();
+
+        // === PARK ===
+        Pose parkPose = new Pose(parkX, 80, heading);
+        moveToPosition(parkPose, "Step 11: Moving to PARK position");
+
+        robot.launcher.stop();
+        robot.intake.stop();
+    }
+
+    private void addSimulatedArtifacts() {
         robot.artifactManager.addArtifact(LauncherSide.LEFT, ArtifactColor.PURPLE);
         robot.artifactManager.addArtifact(LauncherSide.RIGHT, ArtifactColor.PURPLE);
         robot.artifactManager.addArtifact(LauncherSide.LEFT, ArtifactColor.PURPLE);
-
-        Pose spikePose = FieldPositions.getSpikeMiddlePose(alliance); // (15, 58, 180)
-        moveToPosition(spikePose, "Step 3: Intaking artifacts at SPIKE");
-        
-        // Move back to intermediate position before returning to launch zone
-        moveToPosition(leavePose, "Step 3.5: Moving back from SPIKE");
-
-        // Step 4: Return to LAUNCH ZONE
-        moveToPosition(launchPose, "Step 4: Returning to LAUNCH ZONE");
-        robot.intake.stop();
-
-        // Step 5: Score the 3 collected artifacts
-        artifactsScored = 0; // Reset counter for second batch
-        scoreAllArtifacts();
-
-        // Step 6: Move to final parking position
-        Pose parkPose = FieldPositions.getParkPose(alliance); // (48, 36, 180)
-        moveToPosition(parkPose, "Step 6: Moving to final PARK position");
-
-        // Clean up
-        robot.launcher.stop();
-        robot.intake.stop();
     }
 
     private void executePerimeterSideAuto() {

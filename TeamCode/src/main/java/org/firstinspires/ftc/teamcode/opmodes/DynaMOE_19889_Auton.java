@@ -37,6 +37,8 @@ import org.firstinspires.ftc.teamcode.util.FieldPositions.*;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.*;
 import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
+import kotlin.internal.AccessibleLateinitPropertyLiteral;
+
 /**
  * REFACTORED Autonomous OpMode for DynaMOE Team 19889
  * DECODE Game - Supports both GOAL-side and Perimeter-side starting positions
@@ -114,7 +116,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
             if (gamepad1.a) configurationConfirmed = true;
             alliance = FieldPositions.getAlliance(startPosition);
             displayConfiguration();
-            sleep(50);
+//            sleep(50);
         }
     }
 
@@ -136,6 +138,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
      * 5. Score 3 artifacts
      * 6. Intake 3 artifacts from BOTTOM spike (Y=36)
      * 7. Score 3 artifacts
+     * 7. Score 3 artifacts
      * 8. Park
      */
     private void executeGoalSideAuto() {
@@ -144,6 +147,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         // Get alliance-specific coordinates (Blue uses these directly, Red mirrors X)
         double launchX = (alliance == Alliance.BLUE) ? 48 : 96;
         double spikeX = (alliance == Alliance.BLUE) ? 15 : 129;
+        double spikeXTop = (alliance == Alliance.BLUE) ? 18 : 126;
         double parkX = (alliance == Alliance.BLUE) ? 20 : 124;
         double heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
         double launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
@@ -156,8 +160,9 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         scoreAllArtifacts();
 
         // === TOP SPIKE RUN (Y=84) ===
+
         Pose topIntermediatePose = new Pose(launchX, 84, heading);
-        Pose topSpikePose = new Pose(spikeX, 84, heading);
+        Pose topSpikePose = new Pose(spikeXTop, 84, heading);
 
         moveToPosition(topIntermediatePose, "Step 2: Moving to TOP spike area");
         robot.intake.intake();
@@ -286,7 +291,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
                 return true;
             }
             follower.update();
-            sleep(20);
+//            sleep(20);
         }
         return false;
     }
@@ -295,6 +300,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.artifactManager.removeNext(side);
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
-        sleep(200);
+//        sleep(200);
     }
 }

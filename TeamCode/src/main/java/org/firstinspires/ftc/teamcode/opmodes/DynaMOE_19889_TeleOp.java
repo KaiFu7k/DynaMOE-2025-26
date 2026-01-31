@@ -55,12 +55,12 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
             // Start Side Selection
             if (gamepad1.dpad_up) {
-                startPos = (alliance == FieldPositions.Alliance.BLUE) ? 
-                    FieldPositions.StartPosition.BLUE_GOAL_SIDE : FieldPositions.StartPosition.RED_GOAL_SIDE;
+                startPos = (alliance == FieldPositions.Alliance.BLUE) ?
+                        FieldPositions.StartPosition.BLUE_GOAL_SIDE : FieldPositions.StartPosition.RED_GOAL_SIDE;
             }
             if (gamepad1.dpad_down) {
-                startPos = (alliance == FieldPositions.Alliance.BLUE) ? 
-                    FieldPositions.StartPosition.BLUE_PERIMETER_SIDE : FieldPositions.StartPosition.RED_PERIMETER_SIDE;
+                startPos = (alliance == FieldPositions.Alliance.BLUE) ?
+                        FieldPositions.StartPosition.BLUE_PERIMETER_SIDE : FieldPositions.StartPosition.RED_PERIMETER_SIDE;
             }
 
             telemetry.addLine("=== DynaMOE 19889 TELEOP CONFIG ===");
@@ -72,7 +72,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             telemetry.addLine();
             telemetry.addLine("Press START to initialize hardware");
             telemetry.update();
-            
+
             sleep(10);
         }
 
@@ -193,7 +193,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addData("Alliance", alliance);
         telemetry.addData("Drive Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
         telemetry.addData("Heading", "%.1f°", Math.toDegrees(follower.getHeading()));
-        
+
         if (robot.launcherAssist != null) {
             telemetry.addData("Auto-Align", autoAlignActive ? "ACTIVE" : "Off");
             telemetry.addData("Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());

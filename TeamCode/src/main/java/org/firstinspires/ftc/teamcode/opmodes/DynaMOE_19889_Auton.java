@@ -20,7 +20,9 @@
  *   SOFTWARE.
  */
 
+
 package org.firstinspires.ftc.teamcode.opmodes;
+
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -30,6 +32,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.RobotHardware;
 import org.firstinspires.ftc.teamcode.util.FieldPositions;
@@ -37,7 +40,9 @@ import org.firstinspires.ftc.teamcode.util.FieldPositions.*;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.*;
 import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
+
 import kotlin.internal.AccessibleLateinitPropertyLiteral;
+
 
 /**
  * REFACTORED Autonomous OpMode for DynaMOE Team 19889
@@ -46,28 +51,38 @@ import kotlin.internal.AccessibleLateinitPropertyLiteral;
 @Autonomous(name = "DynaMOE 19889 Auto", group = "Autonomous")
 public class DynaMOE_19889_Auton extends LinearOpMode {
 
+
     // ==================== CONSTANTS ====================
+
 
     private static final double LAUNCHER_SPINUP_TIMEOUT = 3.0;
     private static final int ARTIFACTS_TO_SCORE = 3;
 
+
     // ==================== HARDWARE & SUBSYSTEMS ====================
+
 
     private RobotHardware robot;
     private Follower follower;
 
+
     // ==================== CONFIGURATION ====================
+
 
     private StartPosition startPosition = StartPosition.BLUE_GOAL_SIDE;
     private Alliance alliance = Alliance.BLUE;
     private boolean configurationConfirmed = false;
 
+
     // ==================== STATE TRACKING ====================
+
 
     private int artifactsScored = 0;
     private ElapsedTime launcherSpinupTimer = new ElapsedTime();
 
+
     // ==================== MAIN AUTONOMOUS ====================
+
 
     @Override
     public void runOpMode() {
@@ -75,20 +90,27 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.init(hardwareMap);
         follower = Constants.createFollower(hardwareMap);
 
+
         configureAutonomous();
+
 
         Pose startPose = FieldPositions.getStartPose(startPosition);
         follower.setStartingPose(startPose);
+
 
         telemetry.addLine("=== READY TO START ===");
         telemetry.addData("Position", startPosition);
         telemetry.update();
 
+
         waitForStart();
+
 
         if (isStopRequested()) return;
 
+
         follower.update();
+
 
         if (FieldPositions.isGoalSide(startPosition)) {
             executeGoalSideAuto();
@@ -96,15 +118,18 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
             executePerimeterSideAuto();
         }
 
+
         // Final status
         Pose finalPose = follower.getPose();
         telemetry.addLine("=== AUTONOMOUS COMPLETE ===");
-        telemetry.addData("Final Pose", String.format("(%.1f, %.1f, %.1f°)", 
-            finalPose.getX(), finalPose.getY(), Math.toDegrees(finalPose.getHeading())));
+        telemetry.addData("Final Pose", String.format("(%.1f, %.1f, %.1f°)",
+                finalPose.getX(), finalPose.getY(), Math.toDegrees(finalPose.getHeading())));
         telemetry.update();
     }
 
+
     // ==================== CONFIGURATION ====================
+
 
     private void configureAutonomous() {
         while (!isStarted() && !isStopRequested()) {
@@ -113,12 +138,14 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
             else if (gamepad1.dpad_left) startPosition = StartPosition.RED_GOAL_SIDE;
             else if (gamepad1.dpad_right) startPosition = StartPosition.RED_PERIMETER_SIDE;
 
+
             if (gamepad1.a) configurationConfirmed = true;
             alliance = FieldPositions.getAlliance(startPosition);
             displayConfiguration();
-//            sleep(50);
+            sleep(50);
         }
     }
+
 
     private void displayConfiguration() {
         telemetry.addLine("=== DynaMOE 19889 AUTON CONFIG ===");
@@ -127,7 +154,9 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         telemetry.update();
     }
 
+
     // ==================== AUTONOMOUS SEQUENCES ====================
+
 
     /**
      * Extended GOAL-SIDE routine:
@@ -144,71 +173,93 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     private void executeGoalSideAuto() {
         robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine");
 
+
         // Get alliance-specific coordinates (Blue uses these directly, Red mirrors X)
         double launchX = (alliance == Alliance.BLUE) ? 48 : 96;
+        double launchXtop = (alliance == Alliance.BLUE) ? 52 : 92;
         double spikeX = (alliance == Alliance.BLUE) ? 15 : 129;
-        double spikeXTop = (alliance == Alliance.BLUE) ? 18 : 126;
-        double parkX = (alliance == Alliance.BLUE) ? 20 : 124;
+        double spikeXtop = (alliance == Alliance.BLUE) ? 18 : 126;
+        double spikeXBack=(alliance == Alliance.BLUE) ? 33 : 111;
+        double parkX = (alliance == Alliance.BLUE) ? 25 : 119;
         double heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
         double launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
 
+
         Pose launchPose = new Pose(launchX, 96, launchHeading);
+
 
         // === SCORE PRELOADS ===
         artifactsScored = 0;
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
         scoreAllArtifacts();
 
+
         // === TOP SPIKE RUN (Y=84) ===
 
-        Pose topIntermediatePose = new Pose(launchX, 84, heading);
-        Pose topSpikePose = new Pose(spikeXTop, 84, heading);
+
+        Pose topIntermediatePose = new Pose(launchXtop, 84, heading);
+        Pose topSpikePose = new Pose(spikeXtop, 84, heading);
+
 
         moveToPosition(topIntermediatePose, "Step 2: Moving to TOP spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(topSpikePose, "Step 3: Intaking at TOP SPIKE");
 
+
         moveToPosition(launchPose, "Step 4: Returning to LAUNCH ZONE");
         robot.intake.stop();
         artifactsScored = 0;
         scoreAllArtifacts();
 
+
         // === MIDDLE SPIKE RUN (Y=58) ===
         Pose middleIntermediatePose = new Pose(launchX, 58, heading);
         Pose middleSpikePose = new Pose(spikeX, 58, heading);
+        Pose middleSpikeBack = new Pose(spikeXBack,58, heading);
+
+
 
         moveToPosition(middleIntermediatePose, "Step 5: Moving to MIDDLE spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(middleSpikePose, "Step 6: Intaking at MIDDLE SPIKE");
+        moveToPosition(middleSpikeBack, "Back");
+
+
 
         moveToPosition(launchPose, "Step 7: Returning to LAUNCH ZONE");
         robot.intake.stop();
         artifactsScored = 0;
         scoreAllArtifacts();
 
+
         // === BOTTOM SPIKE RUN (Y=36) ===
         Pose bottomIntermediatePose = new Pose(launchX, 36, heading);
         Pose bottomSpikePose = new Pose(spikeX, 36, heading);
+
 
         moveToPosition(bottomIntermediatePose, "Step 8: Moving to BOTTOM spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(bottomSpikePose, "Step 9: Intaking at BOTTOM SPIKE");
 
+
         moveToPosition(launchPose, "Step 10: Returning to LAUNCH ZONE");
         robot.intake.stop();
         artifactsScored = 0;
         scoreAllArtifacts();
 
+
         // === PARK ===
-        Pose parkPose = new Pose(parkX, 80, heading);
+        Pose parkPose = new Pose(parkX, 77, 90);
         moveToPosition(parkPose, "Step 11: Moving to PARK position");
+
 
         robot.launcher.stop();
         robot.intake.stop();
     }
+
 
     private void addSimulatedArtifacts() {
         robot.artifactManager.addArtifact(LauncherSide.LEFT, ArtifactColor.PURPLE);
@@ -216,34 +267,42 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.artifactManager.addArtifact(LauncherSide.LEFT, ArtifactColor.PURPLE);
     }
 
+
     private void executePerimeterSideAuto() {
         robot.logger.info("Autonomous", "Executing PERIMETER-SIDE routine (far shot)");
 
+
         // Reset counter for this run
         artifactsScored = 0;
+
 
         // Step 1: Move to perimeter launch position
         Pose launchPose = FieldPositions.getPerimeterLaunchPose(alliance);
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH position");
 
+
         // Step 2: Score preloads with far shot
         scoreAllArtifactsFar();
+
 
         // Clean up
         robot.launcher.stop();
         robot.intake.stop();
     }
 
+
     // ==================== MOVEMENT ====================
+
 
     private void moveToPosition(Pose targetPose, String description) {
         robot.logger.info("Movement", description);
         Pose currentPose = follower.getPose();
-        
+
         PathChain path = follower.pathBuilder()
-            .addPath(new BezierLine(new Pose(currentPose.getX(), currentPose.getY(), currentPose.getHeading()), targetPose))
-            .setLinearHeadingInterpolation(currentPose.getHeading(), targetPose.getHeading())
-            .build();
+                .addPath(new BezierLine(new Pose(currentPose.getX(), currentPose.getY(), currentPose.getHeading()), targetPose))
+                .setLinearHeadingInterpolation(currentPose.getHeading(), targetPose.getHeading())
+                .build();
+
 
         follower.followPath(path, true);
         while (follower.isBusy() && opModeIsActive()) {
@@ -251,6 +310,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
             updatePositionTelemetry(description, targetPose);
         }
     }
+
 
     private void updatePositionTelemetry(String status, Pose targetPose) {
         Pose currentPose = follower.getPose();
@@ -260,20 +320,25 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         telemetry.update();
     }
 
+
     // ==================== LAUNCHER CONTROL ====================
+
 
     private void scoreAllArtifacts() {
         if (!spinUpLaunchers(true)) return;  // close shot
         launchArtifacts();
     }
 
+
     private void scoreAllArtifactsFar() {
         if (!spinUpLaunchers(false)) return;  // far shot
         launchArtifacts();
     }
 
+
     private void launchArtifacts() {
         LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
+
 
         for (int i = 0; i < shootingOrder.length; i++) {
             if (artifactsScored >= ARTIFACTS_TO_SCORE) break;
@@ -281,9 +346,11 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         }
     }
 
+
     private boolean spinUpLaunchers(boolean closeShot) {
         robot.launcher.spinUp(closeShot);
         launcherSpinupTimer.reset();
+
 
         while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
             if (robot.launcher.isReady()) {
@@ -291,15 +358,17 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
                 return true;
             }
             follower.update();
-//            sleep(20);
+            sleep(20);
         }
         return false;
     }
+
 
     private void scoreArtifact(LauncherSide side, int artifactNum) {
         robot.artifactManager.removeNext(side);
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
-//        sleep(200);
+        sleep(200);
     }
 }
+

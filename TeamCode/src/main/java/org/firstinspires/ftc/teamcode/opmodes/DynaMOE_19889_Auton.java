@@ -41,9 +41,6 @@ import org.firstinspires.ftc.teamcode.util.RobotEnums.*;
 import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
 
-import kotlin.internal.AccessibleLateinitPropertyLiteral;
-
-
 /**
  * REFACTORED Autonomous OpMode for DynaMOE Team 19889
  * DECODE Game - Supports both GOAL-side and Perimeter-side starting positions
@@ -167,7 +164,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
      * 5. Score 3 artifacts
      * 6. Intake 3 artifacts from BOTTOM spike (Y=36)
      * 7. Score 3 artifacts
-     * 7. Score 3 artifacts
      * 8. Park
      */
     private void executeGoalSideAuto() {
@@ -192,6 +188,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         artifactsScored = 0;
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
         scoreAllArtifacts();
+        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
 
 
         // === TOP SPIKE RUN (Y=84) ===
@@ -211,6 +208,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.intake.stop();
         artifactsScored = 0;
         scoreAllArtifacts();
+        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
 
 
         // === MIDDLE SPIKE RUN (Y=58) ===
@@ -232,6 +230,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.intake.stop();
         artifactsScored = 0;
         scoreAllArtifacts();
+        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
 
 
         // === BOTTOM SPIKE RUN (Y=36) ===

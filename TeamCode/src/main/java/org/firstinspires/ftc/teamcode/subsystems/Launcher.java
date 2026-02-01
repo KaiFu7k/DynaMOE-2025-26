@@ -78,10 +78,10 @@ public class Launcher {
         if (!isInitialized) return;
         if (closeShot) {
             targetVelocity = LAUNCHER_CLOSE_TARGET_VELOCITY;
-            minVelocity = LAUNCHER_CLOSE_MIN_VELOCITY;
+
         } else {
             targetVelocity = LAUNCHER_FAR_TARGET_VELOCITY;
-            minVelocity = LAUNCHER_FAR_MIN_VELOCITY;
+
         }
         leftLauncher.setVelocity(targetVelocity);
         rightLauncher.setVelocity(targetVelocity);

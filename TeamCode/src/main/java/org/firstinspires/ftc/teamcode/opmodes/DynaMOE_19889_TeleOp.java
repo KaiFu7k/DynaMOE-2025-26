@@ -38,6 +38,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     private double currentLBPower = 0;
     private double currentRBPower = 0;
 
+
     @Override
     public void runOpMode() {
         try {
@@ -98,7 +99,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
             handleDriveControls();
             handleIntakeControls();
-            handleAutoAlignControls();
+//            handleAutoAlignControls();
             handleLauncherControls();
 
             updateTelemetry();
@@ -150,31 +151,37 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         else robot.intake.stop();
     }
 
-    private void handleAutoAlignControls() {
-        if (robot.launcherAssist == null) return;
-
-        if (gamepad1.left_bumper) {
-            autoAlignActive = !autoAlignActive;
-            robot.launcherAssist.resetPID();
-            sleep(250); // debounce
-        }
-
-        if (gamepad1.right_bumper) {
-            autoVelocityMode = !autoVelocityMode;
-            sleep(250); // debounce
-        }
-
-        if (autoVelocityMode) {
-            manualLauncherSpeed = robot.launcherAssist.getRecommendedVelocity();
-            if (launcherActive) {
-                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
-            }
-        }
-    }
+//    private void handleAutoAlignControls() {
+//        if (robot.launcherAssist == null) return;
+//
+//        if (gamepad1.left_bumper) {
+//            autoAlignActive = !autoAlignActive;
+//            robot.launcherAssist.resetPID();
+//            sleep(250); // debounce
+//        }
+//
+//        if (gamepad1.right_bumper) {
+//            autoVelocityMode = !autoVelocityMode;
+//            sleep(250); // debounce
+//        }
+//
+//        if (autoVelocityMode) {
+//            manualLauncherSpeed = robot.launcherAssist.getRecommendedVelocity();
+//            if (launcherActive) {
+//                robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
+//            }
+//        }
+//    }
 
     private void handleLauncherControls() {
-        if (gamepad1.dpad_up) manualLauncherSpeed = Math.min(manualLauncherSpeed + LAUNCHER_SPEED_INCREMENT, LAUNCHER_MAX_SPEED);
-        if (gamepad1.dpad_down) manualLauncherSpeed = Math.max(manualLauncherSpeed - LAUNCHER_SPEED_INCREMENT, LAUNCHER_MIN_SPEED);
+        if (gamepad2.dpad_up){
+            manualLauncherSpeed=manualLauncherSpeed+50;
+        }
+        else if (gamepad2.dpad_down){
+            manualLauncherSpeed=manualLauncherSpeed-50;
+        }
+//        if (gamepad2.dpad_up) manualLauncherSpeed = Math.min(manualLauncherSpeed + LAUNCHER_SPEED_INCREMENT, LAUNCHER_MAX_SPEED);
+//        if (gamepad2.dpad_down) manualLauncherSpeed = Math.max(manualLauncherSpeed - LAUNCHER_SPEED_INCREMENT, LAUNCHER_MIN_SPEED);
 
         if (gamepad1.a) {
             robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);

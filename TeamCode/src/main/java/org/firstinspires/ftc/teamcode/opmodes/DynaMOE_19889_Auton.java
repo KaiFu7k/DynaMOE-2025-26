@@ -39,6 +39,7 @@ import org.firstinspires.ftc.teamcode.util.FieldPositions;
 import org.firstinspires.ftc.teamcode.util.FieldPositions.*;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.*;
 import static org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
+import org.firstinspires.ftc.teamcode.util.RobotState;
 
 
 /**
@@ -116,11 +117,14 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         }
 
 
-        // Final status
+        // Final status - save pose for TeleOp
         Pose finalPose = follower.getPose();
+        RobotState.saveAutonEndPose(finalPose, alliance);
+
         telemetry.addLine("=== AUTONOMOUS COMPLETE ===");
         telemetry.addData("Final Pose", String.format("(%.1f, %.1f, %.1f°)",
                 finalPose.getX(), finalPose.getY(), Math.toDegrees(finalPose.getHeading())));
+        telemetry.addLine("Pose saved for TeleOp");
         telemetry.update();
     }
 

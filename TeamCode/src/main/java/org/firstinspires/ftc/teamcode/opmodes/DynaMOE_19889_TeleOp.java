@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.RobotHardware;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 import org.firstinspires.ftc.teamcode.util.FieldPositions;
+import org.firstinspires.ftc.teamcode.util.RobotState;
 
 /**
  * TeleOp OpMode for DynaMOE Team 19889
@@ -48,13 +49,23 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             follower = null;
         }
 
+        // === CHECK FOR AUTON POSE ===
+        boolean hasAutonPose = RobotState.hasValidAutonPose();
+        if (hasAutonPose) {
+            // Inherit alliance from Auton
+            FieldPositions.Alliance autonAlliance = RobotState.getLastAlliance();
+            if (autonAlliance != null) {
+                alliance = autonAlliance;
+            }
+        }
+
         // === CONFIGURATION PHASE ===
         while (!isStarted() && !isStopRequested()) {
-            // Alliance Selection
+            // Alliance Selection (only if no Auton pose, or driver wants to override)
             if (gamepad1.x) alliance = FieldPositions.Alliance.BLUE;
             if (gamepad1.b) alliance = FieldPositions.Alliance.RED;
 
-            // Start Side Selection
+            // Start Side Selection (only used if no Auton pose)
             if (gamepad1.dpad_up) {
                 startPos = (alliance == FieldPositions.Alliance.BLUE) ?
                         FieldPositions.StartPosition.BLUE_GOAL_SIDE : FieldPositions.StartPosition.RED_GOAL_SIDE;
@@ -65,11 +76,29 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             }
 
             telemetry.addLine("=== DynaMOE 19889 TELEOP CONFIG ===");
+
+            // Show Auton pose status
+            if (hasAutonPose) {
+                Pose autonPose = RobotState.getAutonEndPose();
+                telemetry.addLine(">>> AUTON POSE DETECTED <<<");
+                telemetry.addData("Position from Auton", String.format("(%.1f, %.1f, %.1f°)",
+                        autonPose.getX(), autonPose.getY(), Math.toDegrees(autonPose.getHeading())));
+                telemetry.addData("Pose Age", "%.1f sec", RobotState.getPoseAgeSeconds());
+                telemetry.addLine();
+            } else {
+                telemetry.addLine("(No Auton pose - using manual selection)");
+                telemetry.addLine();
+            }
+
             telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED");
-            telemetry.addData("Start Side", startPos);
+            if (!hasAutonPose) {
+                telemetry.addData("Start Side", startPos);
+            }
             telemetry.addLine();
             telemetry.addLine("X: Blue | B: Red");
-            telemetry.addLine("D-Pad UP: Goal Side | D-Pad DOWN: Perimeter");
+            if (!hasAutonPose) {
+                telemetry.addLine("D-Pad UP: Goal Side | D-Pad DOWN: Perimeter");
+            }
             telemetry.addLine();
             telemetry.addLine("Press START to initialize hardware");
             telemetry.update();
@@ -83,9 +112,21 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         robot = new RobotHardware(telemetry);
         robot.init(hardwareMap, follower, alliance);
 
-        // SET STARTING POSE - This is the critical fix for distance and angle
+        // SET STARTING POSE - Use Auton pose if available, otherwise use manual selection
         if (follower != null) {
-            follower.setStartingPose(FieldPositions.getStartPose(startPos));
+            if (RobotState.hasValidAutonPose()) {
+                // Use the pose from Autonomous
+                Pose autonPose = RobotState.getAutonEndPose();
+                follower.setStartingPose(autonPose);
+                telemetry.addLine("Using pose from Auton:");
+                telemetry.addData("Position", String.format("(%.1f, %.1f, %.1f°)",
+                        autonPose.getX(), autonPose.getY(), Math.toDegrees(autonPose.getHeading())));
+            } else {
+                // Fall back to manual selection
+                follower.setStartingPose(FieldPositions.getStartPose(startPos));
+                telemetry.addLine("Using manual start position:");
+                telemetry.addData("Position", startPos);
+            }
         }
 
         telemetry.addLine("Ready!");

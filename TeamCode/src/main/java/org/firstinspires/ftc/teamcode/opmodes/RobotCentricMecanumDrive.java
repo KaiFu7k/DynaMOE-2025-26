@@ -147,8 +147,6 @@ public class RobotCentricMecanumDrive extends LinearOpMode {
 
     }
 
-    -+
-
     private void updateTelemetry(){
         telemetry.addData("Left Launcher Power", "%.2f", leftlauncherpower);
         telemetry.addData("Right Launcher Power", "%.2f", rightLauncherpower);

@@ -11,10 +11,11 @@ teamcode/
 ├── opmodes/           # Competition OpModes
 │   ├── DynaMOE_19889_Auton.java    # Main autonomous
 │   ├── DynaMOE_19889_TeleOp.java   # Driver control
+│   ├── LauncherVelocityTuner.java  # Tuning utility
 │   └── [test/legacy OpModes]
 ├── robot/             # RobotHardware.java - aggregates all subsystems
 ├── subsystems/        # Drivetrain, Launcher, Intake, ArtifactManager, LauncherAssist
-├── util/              # RobotEnums, FieldPositions, MotifDetector, RobotLogger
+├── util/              # RobotEnums, FieldPositions, MotifDetector, RobotLogger, RobotState
 ├── pedroPathing/      # Autonomous navigation
 └── states/            # AprilTag vision
 ```
@@ -45,18 +46,48 @@ robot.stopAllSubsystems();
 ### Autonomous
 D-Pad selects position: UP=Blue Goal, DOWN=Blue Perimeter, LEFT=Red Goal, RIGHT=Red Perimeter
 
+Pose is automatically saved at end of Auton for TeleOp to use.
+
 ### TeleOp Controls
-- Left Stick: Drive, Right Stick: Rotate
+
+**Single-Button Launch (Primary):**
+- **RB: Start launch sequence** (auto-align + auto-velocity + fire both sides)
+- B: Abort launch sequence
+
+**Drive & Intake:**
+- Left Stick: Drive
+- Right Stick: Rotate (disabled during auto-align)
 - RT: Intake, LT: Outtake
-- A: Launchers ON, B: OFF
-- X: Feed Left, Y: Feed Right
-- LB: Toggle auto-align, RB: Toggle auto-velocity
 - D-Pad L/R: Toggle field/robot centric
+
+**Manual Launcher (Backup):**
+- A: Spin up manually
+- X: Feed Left, Y: Feed Right
+- Gamepad2 D-Pad U/D: Adjust manual speed ±50 RPM
+
+## Auto-Velocity Table (Tuned 2026-02-03)
+
+| Distance | RPM |
+|----------|-----|
+| 60" | 1090 |
+| 70" | 1170 |
+| 80-90" | 1180 |
+| 101" | 1230 |
+| 120" | 1300 |
+| 143" | 1420 |
+| 150" | 1490 |
 
 ## Tuning
 
 **Launcher velocities** in `Launcher.java`: CLOSE=1150 RPM, FAR=1520 RPM
 
+**Auto-velocity table** in `LauncherAssist.java`: Distance → RPM mapping
+
 **Field positions** in `FieldPositions.java`
 
+**Pose transfer** via `RobotState.java`: Auton end pose → TeleOp start pose
+
+## Team Info
 **Team:** DynaMOE 19889 | **Season:** DECODE 2025-26
+
+**Last Updated:** 2026-02-03

@@ -1,29 +1,49 @@
 # Launcher Speed Guide
 
-## Controls
-- **D-Pad Up/Down**: Adjust speed +/-50 RPM
-- **A**: Spin up launchers
-- **B**: Stop launchers
-- **X/Y**: Feed left/right
+## Single-Button Launch (Recommended)
+Press **Right Bumper** to auto-launch:
+1. Robot auto-aligns to goal
+2. Launcher spins up to correct velocity (based on distance)
+3. Fires LEFT then RIGHT automatically
+4. Press **B** to abort
+
+## Manual Controls (Backup)
+| Button | Action |
+|--------|--------|
+| A | Spin up launchers (manual speed) |
+| B | Stop launchers / Abort launch |
+| X | Feed LEFT |
+| Y | Feed RIGHT |
+| Gamepad2 D-Pad U/D | Adjust speed ±50 RPM |
 
 ## Speed Range
 - Min: 800 RPM | Default: 1200 RPM | Max: 1600 RPM
 
-## Distance Chart
+## Auto-Velocity Table (Tuned 2026-02-03)
 | Distance | RPM |
 |----------|-----|
-| 24-36" | 1100 |
-| 36-48" | 1200 |
-| 48-60" | 1300 |
-| 60-72" | 1400 |
-| 72-84" | 1500 |
-| 84"+ | 1550 |
+| 60" | 1090 |
+| 70" | 1170 |
+| 80-90" | 1180 |
+| 101" | 1230 |
+| 113" | 1250 |
+| 120" | 1300 |
+| 130" | 1320 |
+| 143" | 1420 |
+| 150" | 1490 |
+| 157" | 1480 |
 
 ## Telemetry
-- "Target Speed: XXXX RPM" = your setting
-- "Ready: YES" = safe to feed
+- "Distance to Goal: XX.X in" = current distance
+- "Auto Velocity: XXXX RPM" = calculated speed for this distance
+- "Aligned: YES/NO" = robot facing goal
+- "Launcher Ready: YES" = safe to feed
 
 ## Troubleshooting
-- **Speed won't change**: Hit min/max limit
-- **Not reaching target**: Low battery - reduce RPM
-- **Never shows ready**: Target too high for battery
+| Problem | Solution |
+|---------|----------|
+| Speed won't change | Hit min/max limit |
+| Not reaching target | Low battery - reduce RPM |
+| Never shows ready | Target too high for battery |
+| Wrong auto-velocity | Check pose is set correctly (Auton → TeleOp) |
+| Launch sequence stuck | Press B to abort, check alignment |

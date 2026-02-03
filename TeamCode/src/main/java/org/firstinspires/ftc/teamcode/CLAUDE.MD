@@ -12,10 +12,10 @@ Context for AI assistants working with DynaMOE Team 19889 FTC robot code.
 Modular subsystem-based. Subsystems are independent and shared between Auton/TeleOp.
 
 ```
-opmodes/       - OpModes (DynaMOE_19889_Auton, DynaMOE_19889_TeleOp)
+opmodes/       - OpModes (DynaMOE_19889_Auton, DynaMOE_19889_TeleOp, LauncherVelocityTuner)
 robot/         - RobotHardware.java (aggregates subsystems)
 subsystems/    - Drivetrain, Launcher, Intake, ArtifactManager, LauncherAssist
-util/          - RobotEnums, FieldPositions, MotifDetector, RobotLogger
+util/          - RobotEnums, FieldPositions, MotifDetector, RobotLogger, RobotState
 pedroPathing/  - Autonomous navigation
 states/        - AprilTag vision
 ```
@@ -37,8 +37,57 @@ states/        - AprilTag vision
 | What | Where | Current Values |
 |------|-------|----------------|
 | Launcher velocity | `Launcher.java` | Close: 1150 RPM, Far: 1520 RPM |
+| Auto-velocity table | `LauncherAssist.java` | See table below (tuned 2026-02-03) |
 | Field positions | `FieldPositions.java` | See file for coordinates |
 | PID constants | `LauncherAssist.java` | Kp=1.5, Kd=0.1 |
+
+### Auto-Velocity Table (Tuned)
+
+| Distance (in) | Velocity (RPM) |
+|---------------|----------------|
+| 60 | 1090 |
+| 70 | 1170 |
+| 80-90 | 1180 (plateau) |
+| 101 | 1230 |
+| 113 | 1250 |
+| 120 | 1300 |
+| 130 | 1320 |
+| 143 | 1420 |
+| 150 | 1490 |
+| 157 | 1480 |
+
+## TeleOp Controls
+
+### Single-Button Launch Mode
+| Button | Action |
+|--------|--------|
+| **Right Bumper** | Start launch sequence (auto-align + auto-velocity + fire both sides) |
+| **B** | Abort launch sequence |
+
+### Drive & Intake
+| Button | Action |
+|--------|--------|
+| Left Stick | Drive |
+| Right Stick | Rotate (disabled during auto-align) |
+| Right Trigger | Intake |
+| Left Trigger | Outtake |
+| D-pad L/R | Toggle robot/field centric |
+
+### Manual Launcher (Backup)
+| Button | Action |
+|--------|--------|
+| A | Manual spin up |
+| X | Manual feed LEFT |
+| Y | Manual feed RIGHT |
+| Gamepad2 D-pad U/D | Adjust manual speed ±50 RPM |
+
+## Auton → TeleOp Pose Transfer
+
+Robot pose is preserved between Auton and TeleOp via `RobotState.java`:
+- Auton saves final pose: `RobotState.saveAutonEndPose(pose, alliance)`
+- TeleOp reads it: `RobotState.getAutonEndPose()`
+- Pose expires after 5 minutes
+- If no valid pose, TeleOp falls back to manual selection
 
 ## Field Coordinates
 
@@ -65,6 +114,8 @@ GPP, PGP, PPG (G=Green, P=Purple) - order artifacts must be launched.
 | Launcher slow | Battery voltage, DcMotorEx vs DcMotor |
 | Drive wrong | IMU calibration, motor directions |
 | Auto path off | FieldPositions, starting position selection |
+| Wrong velocity | Check distance calculation, verify pose is set correctly |
+| Accidental launch | Ensure `launcher.stop()` called before intake |
 
 ## AI Guidelines
 
@@ -74,4 +125,4 @@ GPP, PGP, PPG (G=Green, P=Purple) - order artifacts must be launched.
 4. **Keep simple** - Reliability over cleverness
 
 ## Last Updated
-2026-01-30
+2026-02-03

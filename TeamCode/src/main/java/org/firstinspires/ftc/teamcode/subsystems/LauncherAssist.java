@@ -56,35 +56,24 @@ public class LauncherAssist {
      *
      * FORMAT: {distance_in_inches, velocity_in_RPM}
      *
-     * !!! WARNING: THESE VALUES ARE PLACEHOLDER ESTIMATES !!!
-     * !!! MUST BE TUNED BY ACTUAL TESTING ON THE FIELD !!!
+     * TUNED VALUES from testing on 2026-02-03
+     * The code uses Linear Interpolation (LERP) between these points.
      *
-     * HOW TO TUNE:
-     * 1. Place robot at known distance from goal (e.g., 24 inches)
-     * 2. Manually adjust launcher RPM until artifacts consistently land in goal
-     * 3. Record the distance and RPM
-     * 4. Repeat at multiple distances (24, 36, 48, 60, 72, 84 inches recommended)
-     * 5. Update this table with actual values
-     *
-     * The code uses Linear Interpolation (LERP) between these points,
-     * so you don't need to test every possible distance - just enough
-     * data points to create a smooth curve.
-     *
-     * CURRENT VALUES (UNTESTED ESTIMATES):
-     * - 24 inches: 1000 RPM (very close shot)
-     * - 36 inches: 1150 RPM (close shot - matches LAUNCHER_CLOSE_TARGET_VELOCITY)
-     * - 48 inches: 1250 RPM (medium shot)
-     * - 60 inches: 1350 RPM (medium-far shot)
-     * - 72 inches: 1450 RPM (far shot)
-     * - 84 inches: 1550 RPM (very far shot - near LAUNCHER_FAR_TARGET_VELOCITY)
+     * Note: Data shows velocity plateaus around 1180 RPM for 70-90 inch range,
+     * then increases steadily from 100+ inches.
      */
     private static final double[][] VELOCITY_TABLE = {
-        {24, 1000},   // Very close - NEEDS TUNING
-        {36, 1150},   // Close shot - NEEDS TUNING
-        {48, 1250},   // Medium shot - NEEDS TUNING
-        {60, 1350},   // Medium-far - NEEDS TUNING
-        {72, 1450},   // Far shot - NEEDS TUNING
-        {84, 1550}    // Very far - NEEDS TUNING
+        {60, 1090},    // Close shot
+        {70, 1170},    //
+        {80, 1180},    // Velocity plateaus here
+        {90, 1180},    // Still plateau
+        {101, 1230},   // Starting to increase
+        {113, 1250},   //
+        {120, 1300},   //
+        {130, 1320},   //
+        {143, 1420},   // Steeper increase
+        {150, 1490},   // Far shot
+        {157, 1480}    // Max distance tested (slight decrease - may be measurement variance)
     };
 
     // ==================== STATE VARIABLES ====================

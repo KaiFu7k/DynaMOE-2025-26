@@ -341,7 +341,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private void launchArtifacts() {
         LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
-
+        robot.intake.intake();
 
         for (int i = 0; i < shootingOrder.length; i++) {
             if (artifactsScored >= ARTIFACTS_TO_SCORE) break;
@@ -369,6 +369,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private void scoreArtifact(LauncherSide side, int artifactNum) {
         robot.artifactManager.removeNext(side);
+        robot.intake.intake();
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
         sleep(200);

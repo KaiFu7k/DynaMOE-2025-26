@@ -151,14 +151,18 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // IMPORTANT: Tell follower we're in TeleOp mode (stops any active path following)
         // This prevents the robot from moving on its own when TeleOp starts
-        // The 'true' parameter enables field-centric drive option
+        // The 'true' parameter forces the follower to use teleop drive mode
         if (follower != null) {
-            follower.startTeleopDrive();
-            follower.setTeleOpDrive(0, 0, 0, false);  // Ensure zero movement at start
+            follower.startTeleopDrive(true);  // true = force teleop mode, clear any path state
+            follower.setTeleOpDrive(0, 0, 0, false);  // Ensure zero movement
+            follower.update();  // Process the zero command before main loop
         }
 
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
+            // IMPORTANT: Set drive values BEFORE calling update()
+            // This ensures update() processes our teleop commands, not stale path data
+            handleDriveControls();
             follower.update();
             robot.updateSubsystems();
 
@@ -168,7 +172,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             }
 
             handleLaunchStateMachine();
-            handleDriveControls();
             handleIntakeControls();
             handleManualLauncherControls();
 

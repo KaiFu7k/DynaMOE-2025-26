@@ -149,6 +149,14 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         waitForStart();
         bumperDebounce.reset();
 
+        // IMPORTANT: Tell follower we're in TeleOp mode (stops any active path following)
+        // This prevents the robot from moving on its own when TeleOp starts
+        // The 'true' parameter enables field-centric drive option
+        if (follower != null) {
+            follower.startTeleopDrive();
+            follower.setTeleOpDrive(0, 0, 0, false);  // Ensure zero movement at start
+        }
+
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
             follower.update();
@@ -257,41 +265,22 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     private void handleDriveControls() {
         double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * 1.1;
+        double x = -gamepad1.left_stick_x;  // Negated for Pedro Pathing convention
         double rx;
 
         // Use auto-align rotation during ALIGNING state
         if (launchState == LaunchState.ALIGNING && robot.launcherAssist != null) {
-            rx = robot.launcherAssist.getRotationPower();
+            rx = -robot.launcherAssist.getRotationPower();  // Negated for Pedro Pathing convention
         } else {
-            rx = gamepad1.right_stick_x;
+            rx = -gamepad1.right_stick_x;  // Negated for Pedro Pathing convention
         }
 
         // Field-centric toggle
         if (gamepad1.dpad_left) fieldCentric = false;
         if (gamepad1.dpad_right) fieldCentric = true;
 
-        double leftFrontPower, rightFrontPower, leftBackPower, rightBackPower;
-
-        if (fieldCentric) {
-            double botHeading = follower.getHeading();
-            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-
-            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-            leftFrontPower = (rotY + rotX + rx) / denominator;
-            leftBackPower = (rotY - rotX + rx) / denominator;
-            rightFrontPower = (rotY - rotX - rx) / denominator;
-            rightBackPower = (rotY + rotX - rx) / denominator;
-        } else {
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            leftFrontPower = (y + x + rx) / denominator;
-            leftBackPower = (y - x + rx) / denominator;
-            rightFrontPower = (y - x - rx) / denominator;
-            rightBackPower = (y + x - rx) / denominator;
-        }
-
-        robot.drivetrain.setPowers(leftFrontPower, rightFrontPower, leftBackPower, rightBackPower);
+        // Use Pedro Pathing's teleop drive - it handles field-centric internally
+        follower.setTeleOpDrive(y, x, rx, fieldCentric);
     }
 
     // ==================== INTAKE CONTROLS ====================

@@ -39,7 +39,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -73,10 +72,6 @@ public class DynaMOE_19889_Auton_Old extends LinearOpMode {
     private static final double FEED_TIME_SECONDS = 0.80;  // Time to feed one artifact
     private static final double STOP_SPEED = 0.0;
     private static final double FULL_SPEED = 1.0;
-
-    // Diverter servo positions (directs intake to left or right launcher)
-    private static final double LEFT_POSITION = 0.2962;
-    private static final double RIGHT_POSITION = 0;
 
     // Autonomous-specific constants
     private static final double LAUNCHER_SPINUP_TIMEOUT = 3.0;  // Max time to wait for launcher spinup
@@ -213,9 +208,8 @@ public class DynaMOE_19889_Auton_Old extends LinearOpMode {
     private CRServo leftFeeder;
     private CRServo rightFeeder;
 
-    // Intake and artifact routing
+    // Intake
     private DcMotor intake;
-    private Servo diverter;  // Routes artifacts to left or right launcher
 
     // Timers for controlling actions
     private ElapsedTime leftFeederTimer = new ElapsedTime();
@@ -294,9 +288,8 @@ public class DynaMOE_19889_Auton_Old extends LinearOpMode {
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
 
-        // Initialize intake and diverter
+        // Initialize intake
         intake = hardwareMap.get(DcMotor.class, "intake");
-        diverter = hardwareMap.get(Servo.class, "diverter");
 
         // Set motor directions (match TeleOp)
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
@@ -329,7 +322,6 @@ public class DynaMOE_19889_Auton_Old extends LinearOpMode {
         // Initialize servos
         leftFeeder.setPower(STOP_SPEED);
         rightFeeder.setPower(STOP_SPEED);
-        diverter.setPosition(LEFT_POSITION); // Default to left
 
         telemetry.addData("Hardware", "Initialized");
         telemetry.update();

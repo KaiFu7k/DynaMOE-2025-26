@@ -30,7 +30,6 @@ states/        - AprilTag vision
 | Launcher motors | `leftLauncher`, `rightLauncher` (DcMotorEx) |
 | Intake | `intakeMotor` |
 | Feeders | `leftFeeder`, `rightFeeder` (CRServo) |
-| Diverter | `diverter` (Servo) |
 
 ## Tuning Constants
 

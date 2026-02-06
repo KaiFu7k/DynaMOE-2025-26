@@ -21,7 +21,7 @@ import org.firstinspires.ftc.teamcode.util.RobotState;
  *
  * Launch sequence:
  * 1. ALIGNING: Robot auto-rotates to face goal, launcher spins up to calculated velocity
- * 2. FIRING: When aligned and ready, feeds LEFT then RIGHT with slight delay
+ * 2. FIRING: When aligned and ready, fires L, R, L, R (2 per side to guarantee all 3 launch)
  * 3. Returns to IDLE automatically
  */
 @TeleOp(name = "DynaMOE 19889 TeleOp", group = "TeleOp")
@@ -33,14 +33,15 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // ==================== LAUNCH STATE MACHINE ====================
     private enum LaunchState {
-        IDLE,       // Normal driving, launcher off
-        ALIGNING,   // Auto-align active, spinning up launcher
-        FIRING_LEFT,  // Feeding left side
-        FIRING_RIGHT  // Feeding right side
+        IDLE,           // Normal driving, launcher off
+        ALIGNING,       // Auto-align active, spinning up launcher
+        FIRING_LEFT_1,  // Feeding left side (1st)
+        FIRING_RIGHT_1, // Feeding right side (1st)
+        FIRING_LEFT_2,  // Feeding left side (2nd)
+        FIRING_RIGHT_2  // Feeding right side (2nd)
     }
     private LaunchState launchState = LaunchState.IDLE;
     private ElapsedTime launchTimer = new ElapsedTime();
-    private static final double FEED_DELAY_SECONDS = 0.3;  // Delay between L/R feeds
     private static final double LAUNCH_TIMEOUT_SECONDS = 5.0;  // Max time in ALIGNING state
 
     // ==================== DRIVE STATE ====================
@@ -149,20 +150,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         waitForStart();
         bumperDebounce.reset();
 
-        // IMPORTANT: Tell follower we're in TeleOp mode (stops any active path following)
-        // This prevents the robot from moving on its own when TeleOp starts
-        // The 'true' parameter forces the follower to use teleop drive mode
-        if (follower != null) {
-            follower.startTeleopDrive(true);  // true = force teleop mode, clear any path state
-            follower.setTeleOpDrive(0, 0, 0, false);  // Ensure zero movement
-            follower.update();  // Process the zero command before main loop
-        }
-
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
-            // IMPORTANT: Set drive values BEFORE calling update()
-            // This ensures update() processes our teleop commands, not stale path data
-            handleDriveControls();
             follower.update();
             robot.updateSubsystems();
 
@@ -171,6 +160,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 robot.launcherAssist.update();
             }
 
+            handleDriveControls();
             handleLaunchStateMachine();
             handleIntakeControls();
             handleManualLauncherControls();
@@ -197,11 +187,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             case ALIGNING:
                 handleAligningState();
                 break;
-            case FIRING_LEFT:
-                handleFiringLeftState();
+            case FIRING_LEFT_1:
+                handleFiringState(LaunchState.FIRING_RIGHT_1, LauncherSide.RIGHT);
                 break;
-            case FIRING_RIGHT:
-                handleFiringRightState();
+            case FIRING_RIGHT_1:
+                handleFiringState(LaunchState.FIRING_LEFT_2, LauncherSide.LEFT);
+                break;
+            case FIRING_LEFT_2:
+                handleFiringState(LaunchState.FIRING_RIGHT_2, LauncherSide.RIGHT);
+                break;
+            case FIRING_RIGHT_2:
+                handleFinalFiringState();
                 break;
         }
     }
@@ -228,10 +224,9 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         boolean ready = robot.launcher.isReady();
 
         if (aligned && ready) {
-            // Transition to firing
-            launchState = LaunchState.FIRING_LEFT;
+            // Transition to firing: L, R, L, R sequence (2 per side to guarantee all 3 fire)
+            launchState = LaunchState.FIRING_LEFT_1;
             robot.launcher.startFeed(LauncherSide.LEFT);
-            launchTimer.reset();
         }
 
         // Timeout protection
@@ -240,19 +235,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         }
     }
 
-    private void handleFiringLeftState() {
-        // Wait for left feed to complete, then start right
-        if (!robot.launcher.isFeeding() && launchTimer.seconds() > FEED_DELAY_SECONDS) {
-            launchState = LaunchState.FIRING_RIGHT;
-            robot.launcher.startFeed(LauncherSide.RIGHT);
-            launchTimer.reset();
+    private void handleFiringState(LaunchState nextState, LauncherSide nextSide) {
+        // Wait for current feed to complete, then fire next side
+        if (!robot.launcher.isFeeding()) {
+            launchState = nextState;
+            robot.launcher.startFeed(nextSide);
         }
     }
 
-    private void handleFiringRightState() {
-        // Wait for right feed to complete, then return to idle
-        if (!robot.launcher.isFeeding() && launchTimer.seconds() > FEED_DELAY_SECONDS) {
-            // Launch complete - stop launcher and return to idle
+    private void handleFinalFiringState() {
+        // Wait for last feed to complete, then return to idle
+        if (!robot.launcher.isFeeding()) {
             robot.launcher.stop();
             launchState = LaunchState.IDLE;
         }
@@ -268,22 +261,41 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     private void handleDriveControls() {
         double y = -gamepad1.left_stick_y;
-        double x = -gamepad1.left_stick_x;  // Negated for Pedro Pathing convention
+        double x = gamepad1.left_stick_x * 1.1;
         double rx;
 
         // Use auto-align rotation during ALIGNING state
         if (launchState == LaunchState.ALIGNING && robot.launcherAssist != null) {
-            rx = -robot.launcherAssist.getRotationPower();  // Negated for Pedro Pathing convention
+            rx = robot.launcherAssist.getRotationPower();
         } else {
-            rx = -gamepad1.right_stick_x;  // Negated for Pedro Pathing convention
+            rx = gamepad1.right_stick_x;
         }
 
         // Field-centric toggle
         if (gamepad1.dpad_left) fieldCentric = false;
         if (gamepad1.dpad_right) fieldCentric = true;
 
-        // Use Pedro Pathing's teleop drive - it handles field-centric internally
-        follower.setTeleOpDrive(y, x, rx, fieldCentric);
+        double leftFrontPower, rightFrontPower, leftBackPower, rightBackPower;
+
+        if (fieldCentric) {
+            double botHeading = follower.getHeading();
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+
+            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+            leftFrontPower = (rotY + rotX + rx) / denominator;
+            leftBackPower = (rotY - rotX + rx) / denominator;
+            rightFrontPower = (rotY - rotX - rx) / denominator;
+            rightBackPower = (rotY + rotX - rx) / denominator;
+        } else {
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            leftFrontPower = (y + x + rx) / denominator;
+            leftBackPower = (y - x + rx) / denominator;
+            rightFrontPower = (y - x - rx) / denominator;
+            rightBackPower = (y + x - rx) / denominator;
+        }
+
+        robot.drivetrain.setPowers(leftFrontPower, rightFrontPower, leftBackPower, rightBackPower);
     }
 
     // ==================== INTAKE CONTROLS ====================
@@ -341,11 +353,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES" : "NO");
                 telemetry.addData("  Launcher Ready", robot.launcher.isReady() ? "YES" : "NO");
                 break;
-            case FIRING_LEFT:
-                telemetry.addLine(">>> FIRING LEFT <<<");
+            case FIRING_LEFT_1:
+                telemetry.addLine(">>> FIRING LEFT 1/4 <<<");
                 break;
-            case FIRING_RIGHT:
-                telemetry.addLine(">>> FIRING RIGHT <<<");
+            case FIRING_RIGHT_1:
+                telemetry.addLine(">>> FIRING RIGHT 2/4 <<<");
+                break;
+            case FIRING_LEFT_2:
+                telemetry.addLine(">>> FIRING LEFT 3/4 <<<");
+                break;
+            case FIRING_RIGHT_2:
+                telemetry.addLine(">>> FIRING RIGHT 4/4 <<<");
                 break;
         }
         telemetry.addLine();

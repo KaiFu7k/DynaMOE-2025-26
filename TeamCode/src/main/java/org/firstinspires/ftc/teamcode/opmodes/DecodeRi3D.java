@@ -33,7 +33,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 /*
@@ -57,9 +56,6 @@ public class DecodeRi3D extends OpMode {
     double launcherTarget = LAUNCHER_CLOSE_TARGET_VELOCITY; //These variables allow
     double launcherMin = LAUNCHER_CLOSE_MIN_VELOCITY;
 
-    final double LEFT_POSITION = 0.2962; //the left and right position for the diverter servo
-    final double RIGHT_POSITION = 0;
-
     // Declare OpMode members.
     private DcMotor leftFront = null;
     private DcMotor rightFront = null;
@@ -70,7 +66,6 @@ public class DecodeRi3D extends OpMode {
     private DcMotor intake = null;
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
-    private Servo diverter = null;
 
     ElapsedTime leftFeederTimer = new ElapsedTime();
     ElapsedTime rightFeederTimer = new ElapsedTime();
@@ -84,12 +79,6 @@ public class DecodeRi3D extends OpMode {
     }
     private LaunchState leftLaunchState;
     private LaunchState rightLaunchState;
-
-    private enum DiverterDirection {
-        LEFT,
-        RIGHT;
-    }
-    private DiverterDirection diverterDirection = DiverterDirection.LEFT;
 
     private enum IntakeState {
         ON,
@@ -128,7 +117,6 @@ public class DecodeRi3D extends OpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         leftFeeder = hardwareMap.get(CRServo.class, "leftFeeder");
         rightFeeder = hardwareMap.get(CRServo.class, "rightFeeder");
-        diverter = hardwareMap.get(Servo.class, "diverter");
 
         /*
          * To drive forward, most robots need the motor on one side to be reversed,
@@ -214,19 +202,6 @@ public class DecodeRi3D extends OpMode {
         } else if (gamepad1.b) { // stop flywheel
             leftLauncher.setVelocity(STOP_SPEED);
             rightLauncher.setVelocity(STOP_SPEED);
-        }
-
-        if (gamepad1.dpadDownWasPressed()) {
-            switch (diverterDirection){
-                case LEFT:
-                    diverterDirection = DiverterDirection.RIGHT;
-                    diverter.setPosition(RIGHT_POSITION);
-                    break;
-                case RIGHT:
-                    diverterDirection = DiverterDirection.LEFT;
-                    diverter.setPosition(LEFT_POSITION);
-                    break;
-            }
         }
 
         if (gamepad1.aWasPressed()){

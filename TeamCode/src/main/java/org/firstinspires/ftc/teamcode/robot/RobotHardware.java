@@ -33,15 +33,26 @@ public class RobotHardware {
         artifactManager = new ArtifactManager(telemetry);
     }
 
-    /** Initialize all hardware. Call during OpMode init. */
+    /** Initialize all hardware (including drivetrain). Used by TeleOp. */
     public void init(HardwareMap hardwareMap) {
-        init(hardwareMap, null, FieldPositions.Alliance.BLUE);
+        init(hardwareMap, null, FieldPositions.Alliance.BLUE, false);
     }
 
-    /** Initialize all hardware with LauncherAssist. */
+    /** Initialize all hardware with LauncherAssist. Used by TeleOp. */
     public void init(HardwareMap hardwareMap, Follower follower, FieldPositions.Alliance alliance) {
+        init(hardwareMap, follower, alliance, false);
+    }
+
+    /**
+     * Initialize hardware.
+     * @param skipDrivetrain true when Pedro Pathing controls drive motors (e.g. Auton),
+     *                       to avoid both systems fighting over the same motors.
+     */
+    public void init(HardwareMap hardwareMap, Follower follower, FieldPositions.Alliance alliance, boolean skipDrivetrain) {
         try {
-            drivetrain.init(hardwareMap);
+            if (!skipDrivetrain) {
+                drivetrain.init(hardwareMap);
+            }
             launcher.init(hardwareMap);
             intake.init(hardwareMap);
             artifactManager.configureDefaultPreload();

@@ -85,11 +85,12 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     @Override
     public void runOpMode() {
         robot = new RobotHardware(telemetry);
-        robot.init(hardwareMap);
         follower = Constants.createFollower(hardwareMap);
 
-
         configureAutonomous();
+
+        // Skip drivetrain init — Pedro Pathing controls drive motors during auton
+        robot.init(hardwareMap, null, alliance, true);
 
 
         Pose startPose = FieldPositions.getStartPose(startPosition);
@@ -255,7 +256,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
 
         // === PARK ===
-        Pose parkPose = new Pose(parkX, 77, 90);
+        Pose parkPose = new Pose(parkX, 77, Math.toRadians(90));
         moveToPosition(parkPose, "Step 11: Moving to PARK position");
 
 
@@ -372,7 +373,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.intake.intake();
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
-        sleep(200);
     }
 }
 

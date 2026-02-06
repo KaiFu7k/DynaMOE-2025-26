@@ -6,13 +6,12 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
 /**
- * Launcher subsystem. Controls launcher motors, feeder servos, and diverter.
+ * Launcher subsystem. Controls launcher motors and feeder servos.
  */
 public class Launcher {
 
@@ -25,14 +24,10 @@ public class Launcher {
     private static final double FEED_TIME_SECONDS = 0.80;
     private static final double STOP_SPEED = 0.0;
     private static final double FULL_SPEED = 1.0;
-    private static final double LEFT_POSITION = 0.2962;
-    private static final double RIGHT_POSITION = 0;
-
     private DcMotorEx leftLauncher;
     private DcMotorEx rightLauncher;
     private CRServo leftFeeder;
     private CRServo rightFeeder;
-    private Servo diverter;
     private Telemetry telemetry;
 
     private boolean isInitialized = false;
@@ -52,7 +47,6 @@ public class Launcher {
         rightLauncher = hardwareMap.get(DcMotorEx.class, "rightLauncher");
         leftFeeder = hardwareMap.get(CRServo.class, "leftFeeder");
         rightFeeder = hardwareMap.get(CRServo.class, "rightFeeder");
-        diverter = hardwareMap.get(Servo.class, "diverter");
 
         leftLauncher.setDirection(DcMotorSimple.Direction.REVERSE);
         leftFeeder.setDirection(CRServo.Direction.REVERSE);
@@ -68,7 +62,6 @@ public class Launcher {
 
         leftFeeder.setPower(STOP_SPEED);
         rightFeeder.setPower(STOP_SPEED);
-        diverter.setPosition(LEFT_POSITION);
 
         isInitialized = true;
     }
@@ -148,11 +141,6 @@ public class Launcher {
         rightFeeder.setPower(STOP_SPEED);
         leftFeeding = false;
         rightFeeding = false;
-    }
-
-    public void setDiverter(LauncherSide side) {
-        if (!isInitialized) return;
-        diverter.setPosition(side == LauncherSide.LEFT ? LEFT_POSITION : RIGHT_POSITION);
     }
 
     public void stop() {

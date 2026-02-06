@@ -26,7 +26,7 @@ Must match Driver Hub configuration:
 
 **Motors:** `leftFront`, `rightFront`, `leftBack`, `rightBack`, `leftLauncher` (DcMotorEx), `rightLauncher` (DcMotorEx), `intakeMotor`
 
-**Servos:** `leftFeeder` (CRServo), `rightFeeder` (CRServo), `diverter` (Servo)
+**Servos:** `leftFeeder` (CRServo), `rightFeeder` (CRServo)
 
 ## Quick Start
 

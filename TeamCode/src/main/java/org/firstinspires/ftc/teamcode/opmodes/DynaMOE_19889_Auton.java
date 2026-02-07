@@ -79,6 +79,13 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     private ElapsedTime launcherSpinupTimer = new ElapsedTime();
 
 
+    // ==================== ALLIANCE COORDINATES ====================
+
+
+    private double launchX, launchXtop, spikeX, spikeXtop, spikeXBack;
+    private double heading, launchHeading;
+
+
     // ==================== MAIN AUTONOMOUS ====================
 
 
@@ -160,8 +167,60 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     // ==================== AUTONOMOUS SEQUENCES ====================
 
 
+    private void initAllianceCoords() {
+        launchX = (alliance == Alliance.BLUE) ? 48 : 96;
+        launchXtop = (alliance == Alliance.BLUE) ? 52 : 92;
+        spikeX = (alliance == Alliance.BLUE) ? 15 : 129;
+        spikeXtop = (alliance == Alliance.BLUE) ? 18 : 126;
+        spikeXBack = (alliance == Alliance.BLUE) ? 33 : 111;
+        heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
+        launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
+    }
+
+
+    // ==================== DYNAMIC PATH BUILDERS ====================
+    // Each method builds a path from the robot's ACTUAL current position.
+    // Uses BezierLine (straight lines) for reliable, predictable movement.
+    // Spike-bound paths chain intermediate + spike segments so the robot doesn't stop between them.
+
+
+    /** Path A: Start to Launch — straight line */
+    private PathChain buildStartToLaunch() {
+        Pose current = follower.getPose();
+        Pose launchPose = new Pose(launchX, 96, launchHeading);
+        return follower.pathBuilder()
+                .addPath(new BezierLine(current, launchPose))
+                .setLinearHeadingInterpolation(current.getHeading(), launchHeading)
+                .build();
+    }
+
+    /** Return to launch position — straight line from current position */
+    private PathChain buildReturnToLaunch() {
+        Pose current = follower.getPose();
+        Pose launchPose = new Pose(launchX, 96, launchHeading);
+        return follower.pathBuilder()
+                .addPath(new BezierLine(current, launchPose))
+                .setLinearHeadingInterpolation(current.getHeading(), launchHeading)
+                .build();
+    }
+
+    /** Path G: Bottom Spike Back to Final Launch position
+     *  Final launch at (60, 108) / (84, 108) to avoid standing on launch zone lines
+     *  Heading adjusted: Blue ~149°, Red ~31° */
+    private PathChain buildBottomSpikeToFinalLaunch() {
+        Pose current = follower.getPose();
+        double finalLaunchX = (alliance == Alliance.BLUE) ? 60 : 84;
+        double finalLaunchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(149) : Math.toRadians(31);
+        Pose finalLaunchPose = new Pose(finalLaunchX, 108, finalLaunchHeading);
+        return follower.pathBuilder()
+                .addPath(new BezierLine(current, finalLaunchPose))
+                .setLinearHeadingInterpolation(current.getHeading(), finalLaunchHeading)
+                .build();
+    }
+
+
     /**
-     * Extended GOAL-SIDE routine:
+     * Extended GOAL-SIDE routine with curved spline paths:
      * 1. Score 3 Preloads
      * 2. Intake 3 artifacts from TOP spike (Y=84)
      * 3. Score 3 artifacts
@@ -172,94 +231,60 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
      * 8. Park
      */
     private void executeGoalSideAuto() {
-        robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine");
+        robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine (chained paths)");
 
-
-        // Get alliance-specific coordinates (Blue uses these directly, Red mirrors X)
-        double launchX = (alliance == Alliance.BLUE) ? 48 : 96;
-        double launchXtop = (alliance == Alliance.BLUE) ? 52 : 92;
-        double spikeX = (alliance == Alliance.BLUE) ? 15 : 129;
-        double spikeXtop = (alliance == Alliance.BLUE) ? 18 : 126;
-        double spikeXBack=(alliance == Alliance.BLUE) ? 33 : 111;
-        double parkX = (alliance == Alliance.BLUE) ? 25 : 119;
-        double heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
-        double launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
-
-
-        Pose launchPose = new Pose(launchX, 96, launchHeading);
-
+        initAllianceCoords();
 
         // === SCORE PRELOADS ===
         artifactsScored = 0;
-        moveToPosition(launchPose, "Step 1: Moving to LAUNCH ZONE");
-        scoreAllArtifacts();
-        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
-
+        // Spin up while moving to launch — launcher is ready by arrival
+        followPathChainWithSpinup(buildStartToLaunch(), "Step 1: Moving to LAUNCH ZONE", true);
+        robot.intake.intake();  // Keep intake running during launching
+        launchArtifacts();
+        robot.launcher.stop();
 
         // === TOP SPIKE RUN (Y=84) ===
-
-
-        Pose topIntermediatePose = new Pose(launchXtop, 84, heading);
-        Pose topSpikePose = new Pose(spikeXtop, 84, heading);
-
-
-        moveToPosition(topIntermediatePose, "Step 2: Moving to TOP spike area");
+        moveToPosition(new Pose(launchXtop, 84, heading), "Step 2: Moving to TOP spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
-        moveToPosition(topSpikePose, "Step 3: Intaking at TOP SPIKE");
+        moveToPosition(new Pose(spikeXtop, 84, heading), "Step 3: Intaking at TOP SPIKE");
 
-
-        moveToPosition(launchPose, "Step 4: Returning to LAUNCH ZONE");
-        robot.intake.stop();
+        // Spin up while returning to launch — ready to fire on arrival
+        // Intake stays running during travel and launching to keep artifacts seated
+        followPathChainWithSpinup(buildReturnToLaunch(), "Step 4: TOP SPIKE to LAUNCH", true);
         artifactsScored = 0;
-        scoreAllArtifacts();
-        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
-
+        launchArtifacts();
+        robot.launcher.stop();
 
         // === MIDDLE SPIKE RUN (Y=58) ===
-        Pose middleIntermediatePose = new Pose(launchX, 58, heading);
-        Pose middleSpikePose = new Pose(spikeX, 58, heading);
-        Pose middleSpikeBack = new Pose(spikeXBack,58, heading);
-
-
-
-        moveToPosition(middleIntermediatePose, "Step 5: Moving to MIDDLE spike area");
+        moveToPosition(new Pose(launchX, 58, heading), "Step 5: Moving to MIDDLE spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
-        moveToPosition(middleSpikePose, "Step 6: Intaking at MIDDLE SPIKE");
-        moveToPosition(middleSpikeBack, "Back");
+        moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
+        moveToPosition(new Pose(spikeXBack, 58, heading), "Step 7: Backing from wall");
 
-
-
-        moveToPosition(launchPose, "Step 7: Returning to LAUNCH ZONE");
-        robot.intake.stop();
+        // Spin up while returning to launch
+        // Intake stays running during travel and launching
+        followPathChainWithSpinup(buildReturnToLaunch(), "Step 8: MIDDLE SPIKE to LAUNCH", true);
         artifactsScored = 0;
-        scoreAllArtifacts();
-        robot.launcher.stop();  // Stop launchers before intake to prevent accidental launches
-
+        launchArtifacts();
+        robot.launcher.stop();
 
         // === BOTTOM SPIKE RUN (Y=36) ===
-        Pose bottomIntermediatePose = new Pose(launchX, 36, heading);
-        Pose bottomSpikePose = new Pose(spikeX, 36, heading);
-
-
-        moveToPosition(bottomIntermediatePose, "Step 8: Moving to BOTTOM spike area");
+        moveToPosition(new Pose(launchX, 36, heading), "Step 9: Moving to BOTTOM spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
-        moveToPosition(bottomSpikePose, "Step 9: Intaking at BOTTOM SPIKE");
+        moveToPosition(new Pose(spikeX, 36, heading), "Step 10: Intaking at BOTTOM SPIKE");
 
-
-        moveToPosition(launchPose, "Step 10: Returning to LAUNCH ZONE");
-        robot.intake.stop();
+        // No obstruction at y=36, go directly to final launch
+        // Spin up with custom velocity while returning to final launch position
+        // Intake stays running during travel and launching
+        followPathChainWithCustomSpinup(buildBottomSpikeToFinalLaunch(),
+                "Step 11: BOTTOM SPIKE to FINAL LAUNCH", 1170, 1120);
         artifactsScored = 0;
-        scoreAllArtifacts();
+        launchArtifacts();
 
-
-        // === PARK ===
-        Pose parkPose = new Pose(parkX, 77, Math.toRadians(90));
-        moveToPosition(parkPose, "Step 11: Moving to PARK position");
-
-
+        // Robot stays at final launch position (60, 108) — off the launch zone lines for parking points
         robot.launcher.stop();
         robot.intake.stop();
     }
@@ -316,6 +341,78 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
+    private void followPathChain(PathChain path, String description) {
+        robot.logger.info("Movement", description);
+        follower.followPath(path, true);
+        while (follower.isBusy() && opModeIsActive()) {
+            follower.update();
+            Pose currentPose = follower.getPose();
+            telemetry.addData("Status", description);
+            telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
+            telemetry.update();
+        }
+    }
+
+
+    /**
+     * Follow a path while spinning up the launcher simultaneously.
+     * Launcher starts spinning immediately, path runs in parallel.
+     * After path completes, waits for launcher to be ready if it isn't already.
+     */
+    private void followPathChainWithSpinup(PathChain path, String description, boolean closeShot) {
+        robot.logger.info("Movement", description + " (spinning up launcher)");
+
+        // Start launcher spinning BEFORE moving
+        robot.launcher.spinUp(closeShot);
+
+        follower.followPath(path, true);
+        while (follower.isBusy() && opModeIsActive()) {
+            follower.update();
+            Pose currentPose = follower.getPose();
+            telemetry.addData("Status", description);
+            telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
+            telemetry.addData("Launcher", robot.launcher.isReady() ? "READY" : "Spinning...");
+            telemetry.update();
+        }
+
+        // Path done — wait for launcher if not ready yet
+        launcherSpinupTimer.reset();
+        while (opModeIsActive() && !robot.launcher.isReady()
+                && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
+            sleep(20);
+        }
+    }
+
+
+    /**
+     * Same as above but with custom velocity for the final launch position.
+     */
+    private void followPathChainWithCustomSpinup(PathChain path, String description,
+                                                  double velocity, double minVelocity) {
+        robot.logger.info("Movement", description + " (spinning up launcher)");
+
+        // Start launcher spinning BEFORE moving
+        robot.launcher.setTargetVelocity(velocity, minVelocity);
+
+        follower.followPath(path, true);
+        while (follower.isBusy() && opModeIsActive()) {
+            follower.update();
+            Pose currentPose = follower.getPose();
+            telemetry.addData("Status", description);
+            telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
+            telemetry.addData("Launcher", robot.launcher.isReady() ? "READY" : "Spinning...");
+            telemetry.update();
+        }
+
+        // Path done — wait for launcher if not ready yet
+        launcherSpinupTimer.reset();
+        while (opModeIsActive() && !robot.launcher.isReady()
+                && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
+            sleep(20);
+        }
+    }
+
+
     private void updatePositionTelemetry(String status, Pose targetPose) {
         Pose currentPose = follower.getPose();
         telemetry.addData("Status", status);
@@ -340,9 +437,14 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
+    private void scoreAllArtifactsCustom(double velocity, double minVelocity) {
+        if (!spinUpLaunchersCustom(velocity, minVelocity)) return;
+        launchArtifacts();
+    }
+
+
     private void launchArtifacts() {
         LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
-        robot.intake.intake();
 
         for (int i = 0; i < shootingOrder.length; i++) {
             if (artifactsScored >= ARTIFACTS_TO_SCORE) break;
@@ -355,13 +457,27 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.launcher.spinUp(closeShot);
         launcherSpinupTimer.reset();
 
+        while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
+            if (robot.launcher.isReady()) {
+                return true;
+            }
+            // Don't call follower.update() here — it actively drives motors to hold position,
+            // causing the robot to move/jiggle during launching
+            sleep(20);
+        }
+        return false;
+    }
+
+
+    private boolean spinUpLaunchersCustom(double velocity, double minVelocity) {
+        robot.launcher.setTargetVelocity(velocity, minVelocity);
+        launcherSpinupTimer.reset();
 
         while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
             if (robot.launcher.isReady()) {
-                robot.intake.intake();
                 return true;
             }
-            follower.update();
+            // Don't call follower.update() here — same reason as above
             sleep(20);
         }
         return false;
@@ -370,7 +486,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private void scoreArtifact(LauncherSide side, int artifactNum) {
         robot.artifactManager.removeNext(side);
-        robot.intake.intake();
+        // Intake stays running throughout — keeps artifacts seated against feeders
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
     }

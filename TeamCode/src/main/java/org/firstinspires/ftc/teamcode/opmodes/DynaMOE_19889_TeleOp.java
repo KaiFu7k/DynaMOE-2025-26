@@ -152,13 +152,12 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
+            // follower.update() reads odometry AND commands drive motors.
+            // We always call it for fresh pose data (needed by LauncherAssist).
+            // handleDriveControls() overwrites motor powers immediately after,
+            // so Pedro's motor commands are effectively ignored.
             follower.update();
-            robot.updateSubsystems();
-
-            // Update LauncherAssist every loop (needed for distance/angle calculations)
-            if (robot.launcherAssist != null) {
-                robot.launcherAssist.update();
-            }
+            robot.updateSubsystems();  // This already calls launcherAssist.update()
 
             handleDriveControls();
             handleLaunchStateMachine();
@@ -208,6 +207,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             if (robot.launcherAssist != null) {
                 launchState = LaunchState.ALIGNING;
                 robot.launcherAssist.resetPID();
+                robot.intake.intake();  // Keep intake running to seat artifacts against feeders
                 launchTimer.reset();
                 bumperDebounce.reset();
             }
@@ -260,14 +260,22 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // ==================== DRIVE CONTROLS ====================
 
     private void handleDriveControls() {
-        double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * 1.1;
-        double rx;
+        double y, x, rx;
 
-        // Use auto-align rotation during ALIGNING state
         if (launchState == LaunchState.ALIGNING && robot.launcherAssist != null) {
+            // During alignment: auto-rotate only, no translation (driver can't interfere)
+            y = 0;
+            x = 0;
             rx = robot.launcherAssist.getRotationPower();
+        } else if (launchState != LaunchState.IDLE) {
+            // During firing: hold still (no drive input)
+            y = 0;
+            x = 0;
+            rx = 0;
         } else {
+            // Normal driving
+            y = -gamepad1.left_stick_y;
+            x = gamepad1.left_stick_x * 1.1;
             rx = gamepad1.right_stick_x;
         }
 
@@ -352,6 +360,11 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 telemetry.addLine(">>> ALIGNING... <<<");
                 telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES" : "NO");
                 telemetry.addData("  Launcher Ready", robot.launcher.isReady() ? "YES" : "NO");
+                telemetry.addData("  Angle Error", "%.1f°", robot.launcherAssist.getAngleErrorDegrees());
+                telemetry.addData("  Target Angle", "%.1f°", robot.launcherAssist.getTargetAngleDegrees());
+                telemetry.addData("  Current Heading", "%.1f°", robot.launcherAssist.getCurrentHeadingDegrees());
+                telemetry.addData("  Rotation Power", "%.2f", robot.launcherAssist.getLastRotationPower());
+                telemetry.addData("  Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());
                 break;
             case FIRING_LEFT_1:
                 telemetry.addLine(">>> FIRING LEFT 1/4 <<<");
@@ -378,7 +391,9 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addLine();
         telemetry.addData("Alliance", alliance);
         telemetry.addData("Drive Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
-        telemetry.addData("Heading", "%.1f°", Math.toDegrees(follower.getHeading()));
+        Pose currentPose = follower.getPose();
+        telemetry.addData("Position", String.format("(%.1f, %.1f) @ %.1f°",
+                currentPose.getX(), currentPose.getY(), Math.toDegrees(currentPose.getHeading())));
 
         // Launcher status
         telemetry.addLine();

@@ -42,7 +42,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     }
     private LaunchState launchState = LaunchState.IDLE;
     private ElapsedTime launchTimer = new ElapsedTime();
-    private static final double LAUNCH_TIMEOUT_SECONDS = 5.0;  // Max time in ALIGNING state
+    private static final double LAUNCH_TIMEOUT_SECONDS = 2.5;  // Max time in ALIGNING state
+    private static final double MAX_ROTATION_DEGREES = 400;    // Abort if robot spins this much total
+    private double totalRotationDegrees = 0;
+    private double lastHeadingForRotation = 0;
 
     // ==================== DRIVE STATE ====================
     private boolean fieldCentric = false;
@@ -205,6 +208,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 robot.launcherAssist.resetPID();
                 robot.intake.intake();  // Keep intake running to seat artifacts against feeders
                 launchTimer.reset();
+                totalRotationDegrees = 0;
+                lastHeadingForRotation = Math.toDegrees(follower.getPose().getHeading());
                 bumperDebounce.reset();
             }
         }
@@ -225,8 +230,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             robot.launcher.startFeed(LauncherSide.LEFT);
         }
 
-        // Timeout protection
-        if (launchTimer.seconds() > LAUNCH_TIMEOUT_SECONDS) {
+        // Track total rotation to detect spinning
+        double currentHeading = Math.toDegrees(follower.getPose().getHeading());
+        double headingDelta = currentHeading - lastHeadingForRotation;
+        // Normalize delta to [-180, 180]
+        while (headingDelta > 180) headingDelta -= 360;
+        while (headingDelta < -180) headingDelta += 360;
+        totalRotationDegrees += Math.abs(headingDelta);
+        lastHeadingForRotation = currentHeading;
+
+        // Timeout or excessive rotation protection
+        if (launchTimer.seconds() > LAUNCH_TIMEOUT_SECONDS || totalRotationDegrees > MAX_ROTATION_DEGREES) {
             abortLaunch();
         }
     }

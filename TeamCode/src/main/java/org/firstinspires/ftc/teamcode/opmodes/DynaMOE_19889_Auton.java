@@ -63,7 +63,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
 
     private static final double LAUNCHER_SPINUP_TIMEOUT = 3.0;
-    private static final int ARTIFACTS_TO_SCORE = 3;
 
 
     // ==================== HARDWARE & SUBSYSTEMS ====================
@@ -84,7 +83,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     // ==================== STATE TRACKING ====================
 
 
-    private int artifactsScored = 0;
     private ElapsedTime launcherSpinupTimer = new ElapsedTime();
 
 
@@ -252,7 +250,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         initAllianceCoords();
 
         // === SCORE PRELOADS (spin up while moving) ===
-        artifactsScored = 0;
         followPathChainWithSpinup(buildStartToLaunch(), "Step 1: Moving to LAUNCH ZONE", true);
         robot.intake.intake();
         launchArtifacts();
@@ -264,7 +261,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeXtop, 84, heading), "Step 3: Intaking at TOP SPIKE");
         followPathChainWithSpinup(buildReturnToLaunch(), "Step 4: TOP SPIKE to LAUNCH", true);
-        artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
@@ -275,7 +271,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
         moveToPosition(new Pose(spikeXBack, 58, heading), "Step 7: Backing from wall");
         followPathChainWithSpinup(buildReturnToLaunch(), "Step 8: MIDDLE SPIKE to LAUNCH", true);
-        artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
@@ -286,7 +281,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         moveToPosition(new Pose(spikeX, 36, heading), "Step 10: Intaking at BOTTOM SPIKE");
         followPathChainWithCustomSpinup(buildBottomSpikeToFinalLaunch(),
                 "Step 11: BOTTOM SPIKE to FINAL LAUNCH", 1170, 1120);
-        artifactsScored = 0;
         launchArtifacts();
 
         // Park at final launch position — off launch zone lines for parking points
@@ -313,7 +307,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         initAllianceCoords();
 
         // === SCORE PRELOADS (spin up while moving) ===
-        artifactsScored = 0;
         Pose perimLaunchPose = new Pose(perimLaunchX, perimLaunchY, perimLaunchHeading);
         followPathChainWithCustomSpinup(
                 follower.pathBuilder()
@@ -332,7 +325,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         moveToPosition(new Pose(spikeX, 36, heading), "Step 3: Intaking at BOTTOM SPIKE");
         followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
                 "Step 4: BOTTOM SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
-        artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
@@ -343,7 +335,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
         followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
                 "Step 7: MIDDLE SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
-        artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
@@ -439,21 +430,13 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     // ==================== LAUNCHER CONTROL ====================
 
 
+    /** Fire L, R, L, R — 4 feeds guarantees all 3 artifacts launch regardless of which side they're on */
     private void launchArtifacts() {
-        // Fire L, R, L, R — 4 feeds guarantees all 3 artifacts launch regardless of which side they're on
-        LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT, LauncherSide.RIGHT };
-
-        for (int i = 0; i < shootingOrder.length; i++) {
-            if (artifactsScored >= ARTIFACTS_TO_SCORE) break;
-            scoreArtifact(shootingOrder[i], i + 1);
+        LauncherSide[] order = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT, LauncherSide.RIGHT };
+        for (LauncherSide side : order) {
+            robot.artifactManager.removeNext(side);
+            robot.launcher.feed(side, this::opModeIsActive);
         }
-    }
-
-
-    private void scoreArtifact(LauncherSide side, int artifactNum) {
-        robot.artifactManager.removeNext(side);
-        robot.launcher.feed(side, this::opModeIsActive);
-        artifactsScored++;
     }
 }
 

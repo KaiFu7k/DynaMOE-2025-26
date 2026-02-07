@@ -43,8 +43,17 @@ import org.firstinspires.ftc.teamcode.util.RobotState;
 
 
 /**
- * REFACTORED Autonomous OpMode for DynaMOE Team 19889
- * DECODE Game - Supports both GOAL-side and Perimeter-side starting positions
+ * Autonomous OpMode for DynaMOE Team 19889 — DECODE 2025-26
+ *
+ * Goal-side: Scores 12 artifacts (3 preloads + 3 spikes x 3 each), parks at (60,108)/(84,108)
+ * Perimeter-side: Scores 9 artifacts (3 preloads + 2 spikes x 3 each), parks at (36,12)/(108,12)
+ *
+ * Key features:
+ * - BezierLine paths (straight lines) for reliable movement
+ * - Launcher spins up while traveling to launch position (saves ~2s per cycle)
+ * - Intake runs continuously during scoring to keep artifacts seated
+ * - No follower.update() during scoring to prevent robot jiggle
+ * - Pose saved for TeleOp via RobotState at end of auton
  */
 @Autonomous(name = "DynaMOE 19889 Auto", group = "Autonomous")
 public class DynaMOE_19889_Auton extends LinearOpMode {
@@ -84,6 +93,10 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
     private double launchX, launchXtop, spikeX, spikeXtop, spikeXBack;
     private double heading, launchHeading;
+    // Perimeter-side specific
+    private double perimLaunchX, perimLaunchY, perimLaunchHeading, parkX;
+    private static final double PERIMETER_LAUNCH_VELOCITY = 1380;
+    private static final double PERIMETER_LAUNCH_MIN_VELOCITY = 1330;
 
 
     // ==================== MAIN AUTONOMOUS ====================
@@ -175,16 +188,18 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         spikeXBack = (alliance == Alliance.BLUE) ? 33 : 111;
         heading = (alliance == Alliance.BLUE) ? Math.toRadians(180) : Math.toRadians(0);
         launchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(135) : Math.toRadians(45);
+        // Perimeter-side coords
+        perimLaunchX = (alliance == Alliance.BLUE) ? 48 : 96;
+        perimLaunchY = 15;
+        perimLaunchHeading = (alliance == Alliance.BLUE) ? Math.toRadians(110) : Math.toRadians(70);
+        parkX = (alliance == Alliance.BLUE) ? 36 : 108;
     }
 
 
     // ==================== DYNAMIC PATH BUILDERS ====================
-    // Each method builds a path from the robot's ACTUAL current position.
-    // Uses BezierLine (straight lines) for reliable, predictable movement.
-    // Spike-bound paths chain intermediate + spike segments so the robot doesn't stop between them.
+    // Each path is built from the robot's current position for accuracy.
 
-
-    /** Path A: Start to Launch — straight line */
+    /** Start to goal-side launch position */
     private PathChain buildStartToLaunch() {
         Pose current = follower.getPose();
         Pose launchPose = new Pose(launchX, 96, launchHeading);
@@ -194,7 +209,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
                 .build();
     }
 
-    /** Return to launch position — straight line from current position */
+    /** Return to goal-side launch position */
     private PathChain buildReturnToLaunch() {
         Pose current = follower.getPose();
         Pose launchPose = new Pose(launchX, 96, launchHeading);
@@ -204,9 +219,17 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
                 .build();
     }
 
-    /** Path G: Bottom Spike Back to Final Launch position
-     *  Final launch at (60, 108) / (84, 108) to avoid standing on launch zone lines
-     *  Heading adjusted: Blue ~149°, Red ~31° */
+    /** Return to perimeter launch position */
+    private PathChain buildReturnToPerimeterLaunch() {
+        Pose current = follower.getPose();
+        Pose launchPose = new Pose(perimLaunchX, perimLaunchY, perimLaunchHeading);
+        return follower.pathBuilder()
+                .addPath(new BezierLine(current, launchPose))
+                .setLinearHeadingInterpolation(current.getHeading(), perimLaunchHeading)
+                .build();
+    }
+
+    /** Bottom spike to final launch at (60,108)/(84,108), off launch zone lines for parking points */
     private PathChain buildBottomSpikeToFinalLaunch() {
         Pose current = follower.getPose();
         double finalLaunchX = (alliance == Alliance.BLUE) ? 60 : 84;
@@ -220,71 +243,53 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
 
     /**
-     * Extended GOAL-SIDE routine with curved spline paths:
-     * 1. Score 3 Preloads
-     * 2. Intake 3 artifacts from TOP spike (Y=84)
-     * 3. Score 3 artifacts
-     * 4. Intake 3 artifacts from MIDDLE spike (Y=58)
-     * 5. Score 3 artifacts
-     * 6. Intake 3 artifacts from BOTTOM spike (Y=36)
-     * 7. Score 3 artifacts
-     * 8. Park
+     * GOAL-SIDE routine — 12 artifacts total:
+     * Preloads -> Top spike -> Middle spike (wall retreat) -> Bottom spike -> Final launch & park
      */
     private void executeGoalSideAuto() {
-        robot.logger.info("Autonomous", "Executing extended GOAL-SIDE routine (chained paths)");
+        robot.logger.info("Autonomous", "Executing GOAL-SIDE routine");
 
         initAllianceCoords();
 
-        // === SCORE PRELOADS ===
+        // === SCORE PRELOADS (spin up while moving) ===
         artifactsScored = 0;
-        // Spin up while moving to launch — launcher is ready by arrival
         followPathChainWithSpinup(buildStartToLaunch(), "Step 1: Moving to LAUNCH ZONE", true);
-        robot.intake.intake();  // Keep intake running during launching
+        robot.intake.intake();
         launchArtifacts();
         robot.launcher.stop();
 
-        // === TOP SPIKE RUN (Y=84) ===
+        // === TOP SPIKE (Y=84) ===
         moveToPosition(new Pose(launchXtop, 84, heading), "Step 2: Moving to TOP spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeXtop, 84, heading), "Step 3: Intaking at TOP SPIKE");
-
-        // Spin up while returning to launch — ready to fire on arrival
-        // Intake stays running during travel and launching to keep artifacts seated
         followPathChainWithSpinup(buildReturnToLaunch(), "Step 4: TOP SPIKE to LAUNCH", true);
         artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
-        // === MIDDLE SPIKE RUN (Y=58) ===
+        // === MIDDLE SPIKE (Y=58) — backs up to x=33/111 to avoid obstruction at (0-12, 72) ===
         moveToPosition(new Pose(launchX, 58, heading), "Step 5: Moving to MIDDLE spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
         moveToPosition(new Pose(spikeXBack, 58, heading), "Step 7: Backing from wall");
-
-        // Spin up while returning to launch
-        // Intake stays running during travel and launching
         followPathChainWithSpinup(buildReturnToLaunch(), "Step 8: MIDDLE SPIKE to LAUNCH", true);
         artifactsScored = 0;
         launchArtifacts();
         robot.launcher.stop();
 
-        // === BOTTOM SPIKE RUN (Y=36) ===
+        // === BOTTOM SPIKE (Y=36) — no obstruction, goes directly to final launch ===
         moveToPosition(new Pose(launchX, 36, heading), "Step 9: Moving to BOTTOM spike area");
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeX, 36, heading), "Step 10: Intaking at BOTTOM SPIKE");
-
-        // No obstruction at y=36, go directly to final launch
-        // Spin up with custom velocity while returning to final launch position
-        // Intake stays running during travel and launching
         followPathChainWithCustomSpinup(buildBottomSpikeToFinalLaunch(),
                 "Step 11: BOTTOM SPIKE to FINAL LAUNCH", 1170, 1120);
         artifactsScored = 0;
         launchArtifacts();
 
-        // Robot stays at final launch position (60, 108) — off the launch zone lines for parking points
+        // Park at final launch position — off launch zone lines for parking points
         robot.launcher.stop();
         robot.intake.stop();
     }
@@ -297,25 +302,53 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
+    /**
+     * PERIMETER-SIDE routine — 9 artifacts total:
+     * Preloads -> Bottom spike -> Middle spike -> Park at (36,12)/(108,12)
+     * All launches at 1380 RPM (~138 in distance to goal)
+     */
     private void executePerimeterSideAuto() {
-        robot.logger.info("Autonomous", "Executing PERIMETER-SIDE routine (far shot)");
+        robot.logger.info("Autonomous", "Executing PERIMETER-SIDE routine");
 
+        initAllianceCoords();
 
-        // Reset counter for this run
+        // === SCORE PRELOADS (spin up while moving) ===
         artifactsScored = 0;
-
-
-        // Step 1: Move to perimeter launch position
-        Pose launchPose = FieldPositions.getPerimeterLaunchPose(alliance);
-        moveToPosition(launchPose, "Step 1: Moving to LAUNCH position");
-
-
-        // Step 2: Score preloads with far shot
-        scoreAllArtifactsFar();
-
-
-        // Clean up
+        Pose perimLaunchPose = new Pose(perimLaunchX, perimLaunchY, perimLaunchHeading);
+        followPathChainWithCustomSpinup(
+                follower.pathBuilder()
+                        .addPath(new BezierLine(follower.getPose(), perimLaunchPose))
+                        .setLinearHeadingInterpolation(follower.getPose().getHeading(), perimLaunchHeading)
+                        .build(),
+                "Step 1: Moving to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
+        robot.intake.intake();
+        launchArtifacts();
         robot.launcher.stop();
+
+        // === BOTTOM SPIKE (Y=36) ===
+        moveToPosition(new Pose(perimLaunchX, 36, heading), "Step 2: Moving to BOTTOM spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(new Pose(spikeX, 36, heading), "Step 3: Intaking at BOTTOM SPIKE");
+        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
+                "Step 4: BOTTOM SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
+        artifactsScored = 0;
+        launchArtifacts();
+        robot.launcher.stop();
+
+        // === MIDDLE SPIKE (Y=58) ===
+        moveToPosition(new Pose(perimLaunchX, 58, heading), "Step 5: Moving to MIDDLE spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
+        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
+                "Step 7: MIDDLE SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
+        artifactsScored = 0;
+        launchArtifacts();
+        robot.launcher.stop();
+
+        // === PARK ===
+        moveToPosition(new Pose(parkX, 12, heading), "Step 8: PARKING");
         robot.intake.stop();
     }
 
@@ -341,24 +374,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
-    private void followPathChain(PathChain path, String description) {
-        robot.logger.info("Movement", description);
-        follower.followPath(path, true);
-        while (follower.isBusy() && opModeIsActive()) {
-            follower.update();
-            Pose currentPose = follower.getPose();
-            telemetry.addData("Status", description);
-            telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
-            telemetry.update();
-        }
-    }
-
-
-    /**
-     * Follow a path while spinning up the launcher simultaneously.
-     * Launcher starts spinning immediately, path runs in parallel.
-     * After path completes, waits for launcher to be ready if it isn't already.
-     */
+    /** Follow path while spinning up launcher. Waits for launcher after path completes if needed. */
     private void followPathChainWithSpinup(PathChain path, String description, boolean closeShot) {
         robot.logger.info("Movement", description + " (spinning up launcher)");
 
@@ -384,9 +400,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
-    /**
-     * Same as above but with custom velocity for the final launch position.
-     */
+    /** Follow path while spinning up launcher to a custom velocity. */
     private void followPathChainWithCustomSpinup(PathChain path, String description,
                                                   double velocity, double minVelocity) {
         robot.logger.info("Movement", description + " (spinning up launcher)");
@@ -425,24 +439,6 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     // ==================== LAUNCHER CONTROL ====================
 
 
-    private void scoreAllArtifacts() {
-        if (!spinUpLaunchers(true)) return;  // close shot
-        launchArtifacts();
-    }
-
-
-    private void scoreAllArtifactsFar() {
-        if (!spinUpLaunchers(false)) return;  // far shot
-        launchArtifacts();
-    }
-
-
-    private void scoreAllArtifactsCustom(double velocity, double minVelocity) {
-        if (!spinUpLaunchersCustom(velocity, minVelocity)) return;
-        launchArtifacts();
-    }
-
-
     private void launchArtifacts() {
         LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
 
@@ -453,40 +449,8 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
-    private boolean spinUpLaunchers(boolean closeShot) {
-        robot.launcher.spinUp(closeShot);
-        launcherSpinupTimer.reset();
-
-        while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
-            if (robot.launcher.isReady()) {
-                return true;
-            }
-            // Don't call follower.update() here — it actively drives motors to hold position,
-            // causing the robot to move/jiggle during launching
-            sleep(20);
-        }
-        return false;
-    }
-
-
-    private boolean spinUpLaunchersCustom(double velocity, double minVelocity) {
-        robot.launcher.setTargetVelocity(velocity, minVelocity);
-        launcherSpinupTimer.reset();
-
-        while (opModeIsActive() && launcherSpinupTimer.seconds() < LAUNCHER_SPINUP_TIMEOUT) {
-            if (robot.launcher.isReady()) {
-                return true;
-            }
-            // Don't call follower.update() here — same reason as above
-            sleep(20);
-        }
-        return false;
-    }
-
-
     private void scoreArtifact(LauncherSide side, int artifactNum) {
         robot.artifactManager.removeNext(side);
-        // Intake stays running throughout — keeps artifacts seated against feeders
         robot.launcher.feed(side, this::opModeIsActive);
         artifactsScored++;
     }

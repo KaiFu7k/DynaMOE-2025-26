@@ -152,12 +152,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
-            // follower.update() reads odometry AND commands drive motors.
-            // We always call it for fresh pose data (needed by LauncherAssist).
-            // handleDriveControls() overwrites motor powers immediately after,
-            // so Pedro's motor commands are effectively ignored.
-            follower.update();
-            robot.updateSubsystems();  // This already calls launcherAssist.update()
+            follower.update();          // Update odometry (motor commands overwritten by handleDriveControls)
+            robot.updateSubsystems();   // Updates launcher, launcherAssist, etc.
 
             handleDriveControls();
             handleLaunchStateMachine();
@@ -263,17 +259,13 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         double y, x, rx;
 
         if (launchState == LaunchState.ALIGNING && robot.launcherAssist != null) {
-            // During alignment: auto-rotate only, no translation (driver can't interfere)
-            y = 0;
-            x = 0;
+            // Auto-rotate only, no translation
+            y = 0; x = 0;
             rx = robot.launcherAssist.getRotationPower();
         } else if (launchState != LaunchState.IDLE) {
-            // During firing: hold still (no drive input)
-            y = 0;
-            x = 0;
-            rx = 0;
+            // Firing — hold still
+            y = 0; x = 0; rx = 0;
         } else {
-            // Normal driving
             y = -gamepad1.left_stick_y;
             x = gamepad1.left_stick_x * 1.1;
             rx = gamepad1.right_stick_x;
@@ -309,7 +301,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // ==================== INTAKE CONTROLS ====================
 
     private void handleIntakeControls() {
-        // Disable intake during launch sequence to prevent interference
+        // Intake is managed by launch sequence when not IDLE
         if (launchState != LaunchState.IDLE) return;
 
         if (gamepad1.right_trigger > 0.5) robot.intake.intake();

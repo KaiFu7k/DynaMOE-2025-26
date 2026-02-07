@@ -201,6 +201,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             if (robot.launcherAssist != null) {
                 launchState = LaunchState.ALIGNING;
                 robot.launcherAssist.resetPID();
+                robot.intake.intake();
                 launchTimer.reset();
                 bumperDebounce.reset();
             }
@@ -275,8 +276,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         if (fieldCentric) {
             double botHeading = follower.getHeading();
-            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+            double rotX = x * Math.cos(botHeading) - y * Math.sin(botHeading);
+            double rotY = x * Math.sin(botHeading) + y * Math.cos(botHeading);
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
             leftFrontPower = (rotY + rotX + rx) / denominator;

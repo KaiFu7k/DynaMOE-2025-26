@@ -19,7 +19,7 @@ public class Launcher {
     // Velocity targets (RPM)
     public static final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1150;
     public static final double LAUNCHER_CLOSE_MIN_VELOCITY = 1100;
-    public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1520;
+    public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1540;
     public static final double LAUNCHER_FAR_MIN_VELOCITY = 1450;
 
     private static final double FEED_TIME_SECONDS = 0.80;

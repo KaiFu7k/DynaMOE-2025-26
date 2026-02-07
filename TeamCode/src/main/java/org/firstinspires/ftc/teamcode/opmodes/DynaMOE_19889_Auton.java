@@ -278,7 +278,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         // Reset counter for this run
         artifactsScored = 0;
 
-
+        sleep(2500);
         // Step 1: Move to perimeter launch position
         Pose launchPose = FieldPositions.getPerimeterLaunchPose(alliance);
         moveToPosition(launchPose, "Step 1: Moving to LAUNCH position");

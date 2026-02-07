@@ -440,7 +440,8 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
 
     private void launchArtifacts() {
-        LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT };
+        // Fire L, R, L, R — 4 feeds guarantees all 3 artifacts launch regardless of which side they're on
+        LauncherSide[] shootingOrder = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT, LauncherSide.RIGHT };
 
         for (int i = 0; i < shootingOrder.length; i++) {
             if (artifactsScored >= ARTIFACTS_TO_SCORE) break;

@@ -30,7 +30,7 @@ public class LauncherAssist {
     // ==================== ALIGNMENT CONSTANTS ====================
 
     /** How close (in degrees) the robot needs to be to consider itself "aligned" */
-    private static final double ALIGNMENT_TOLERANCE_DEGREES = 2.0;
+    private static final double ALIGNMENT_TOLERANCE_DEGREES = 4.0;
 
     /** Maximum rotation speed (0 to 1) - limits how fast robot can spin during alignment */
     private static final double ROTATION_SPEED = 0.6;

@@ -21,7 +21,7 @@ import org.firstinspires.ftc.teamcode.util.RobotState;
  *
  * Launch sequence:
  * 1. ALIGNING: Robot auto-rotates to face goal, launcher spins up to calculated velocity
- * 2. FIRING: When aligned and ready, feeds LEFT then RIGHT with slight delay
+ * 2. FIRING: When aligned and ready, fires L, R, L, R (2 per side to guarantee all 3 launch)
  * 3. Returns to IDLE automatically
  */
 @TeleOp(name = "DynaMOE 19889 TeleOp", group = "TeleOp")
@@ -33,15 +33,19 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // ==================== LAUNCH STATE MACHINE ====================
     private enum LaunchState {
-        IDLE,       // Normal driving, launcher off
-        ALIGNING,   // Auto-align active, spinning up launcher
-        FIRING_LEFT,  // Feeding left side
-        FIRING_RIGHT  // Feeding right side
+        IDLE,           // Normal driving, launcher off
+        ALIGNING,       // Auto-align active, spinning up launcher
+        FIRING_LEFT_1,  // Feeding left side (1st)
+        FIRING_RIGHT_1, // Feeding right side (1st)
+        FIRING_LEFT_2,  // Feeding left side (2nd)
+        FIRING_RIGHT_2  // Feeding right side (2nd)
     }
     private LaunchState launchState = LaunchState.IDLE;
     private ElapsedTime launchTimer = new ElapsedTime();
-    private static final double FEED_DELAY_SECONDS = 0.3;  // Delay between L/R feeds
-    private static final double LAUNCH_TIMEOUT_SECONDS = 5.0;  // Max time in ALIGNING state
+    private static final double LAUNCH_TIMEOUT_SECONDS = 2.5;  // Max time in ALIGNING state
+    private static final double MAX_ROTATION_DEGREES = 400;    // Abort if robot spins this much total
+    private double totalRotationDegrees = 0;
+    private double lastHeadingForRotation = 0;
 
     // ==================== DRIVE STATE ====================
     private boolean fieldCentric = false;
@@ -151,16 +155,11 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // ==================== MAIN LOOP ====================
         while (opModeIsActive()) {
-            follower.update();
-            robot.updateSubsystems();
+            follower.update();          // Update odometry (motor commands overwritten by handleDriveControls)
+            robot.updateSubsystems();   // Updates launcher, launcherAssist, etc.
 
-            // Update LauncherAssist every loop (needed for distance/angle calculations)
-            if (robot.launcherAssist != null) {
-                robot.launcherAssist.update();
-            }
-
-            handleLaunchStateMachine();
             handleDriveControls();
+            handleLaunchStateMachine();
             handleIntakeControls();
             handleManualLauncherControls();
 
@@ -186,11 +185,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             case ALIGNING:
                 handleAligningState();
                 break;
-            case FIRING_LEFT:
-                handleFiringLeftState();
+            case FIRING_LEFT_1:
+                handleFiringState(LaunchState.FIRING_RIGHT_1, LauncherSide.RIGHT);
                 break;
-            case FIRING_RIGHT:
-                handleFiringRightState();
+            case FIRING_RIGHT_1:
+                handleFiringState(LaunchState.FIRING_LEFT_2, LauncherSide.LEFT);
+                break;
+            case FIRING_LEFT_2:
+                handleFiringState(LaunchState.FIRING_RIGHT_2, LauncherSide.RIGHT);
+                break;
+            case FIRING_RIGHT_2:
+                handleFinalFiringState();
                 break;
         }
     }
@@ -201,8 +206,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             if (robot.launcherAssist != null) {
                 launchState = LaunchState.ALIGNING;
                 robot.launcherAssist.resetPID();
-                robot.intake.intake();
+                robot.intake.intake();  // Keep intake running to seat artifacts against feeders
                 launchTimer.reset();
+                totalRotationDegrees = 0;
+                lastHeadingForRotation = Math.toDegrees(follower.getPose().getHeading());
                 bumperDebounce.reset();
             }
         }
@@ -218,31 +225,37 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         boolean ready = robot.launcher.isReady();
 
         if (aligned && ready) {
-            // Transition to firing
-            launchState = LaunchState.FIRING_LEFT;
+            // Transition to firing: L, R, L, R sequence (2 per side to guarantee all 3 fire)
+            launchState = LaunchState.FIRING_LEFT_1;
             robot.launcher.startFeed(LauncherSide.LEFT);
-            launchTimer.reset();
         }
 
-        // Timeout protection
-        if (launchTimer.seconds() > LAUNCH_TIMEOUT_SECONDS) {
+        // Track total rotation to detect spinning
+        double currentHeading = Math.toDegrees(follower.getPose().getHeading());
+        double headingDelta = currentHeading - lastHeadingForRotation;
+        // Normalize delta to [-180, 180]
+        while (headingDelta > 180) headingDelta -= 360;
+        while (headingDelta < -180) headingDelta += 360;
+        totalRotationDegrees += Math.abs(headingDelta);
+        lastHeadingForRotation = currentHeading;
+
+        // Timeout or excessive rotation protection
+        if (launchTimer.seconds() > LAUNCH_TIMEOUT_SECONDS || totalRotationDegrees > MAX_ROTATION_DEGREES) {
             abortLaunch();
         }
     }
 
-    private void handleFiringLeftState() {
-        // Wait for left feed to complete, then start right
-        if (!robot.launcher.isFeeding() && launchTimer.seconds() > FEED_DELAY_SECONDS) {
-            launchState = LaunchState.FIRING_RIGHT;
-            robot.launcher.startFeed(LauncherSide.RIGHT);
-            launchTimer.reset();
+    private void handleFiringState(LaunchState nextState, LauncherSide nextSide) {
+        // Wait for current feed to complete, then fire next side
+        if (!robot.launcher.isFeeding()) {
+            launchState = nextState;
+            robot.launcher.startFeed(nextSide);
         }
     }
 
-    private void handleFiringRightState() {
-        // Wait for right feed to complete, then return to idle
-        if (!robot.launcher.isFeeding() && launchTimer.seconds() > FEED_DELAY_SECONDS) {
-            // Launch complete - stop launcher and return to idle
+    private void handleFinalFiringState() {
+        // Wait for last feed to complete, then return to idle
+        if (!robot.launcher.isFeeding()) {
             robot.launcher.stop();
             launchState = LaunchState.IDLE;
         }
@@ -257,14 +270,18 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // ==================== DRIVE CONTROLS ====================
 
     private void handleDriveControls() {
-        double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * 1.1;
-        double rx;
+        double y, x, rx;
 
-        // Use auto-align rotation during ALIGNING state
         if (launchState == LaunchState.ALIGNING && robot.launcherAssist != null) {
+            // Auto-rotate only, no translation
+            y = 0; x = 0;
             rx = robot.launcherAssist.getRotationPower();
+        } else if (launchState != LaunchState.IDLE) {
+            // Firing — hold still
+            y = 0; x = 0; rx = 0;
         } else {
+            y = -gamepad1.left_stick_y;
+            x = gamepad1.left_stick_x * 1.1;
             rx = gamepad1.right_stick_x;
         }
 
@@ -276,8 +293,8 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         if (fieldCentric) {
             double botHeading = follower.getHeading();
-            double rotX = x * Math.cos(botHeading) - y * Math.sin(botHeading);
-            double rotY = x * Math.sin(botHeading) + y * Math.cos(botHeading);
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
             leftFrontPower = (rotY + rotX + rx) / denominator;
@@ -298,7 +315,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // ==================== INTAKE CONTROLS ====================
 
     private void handleIntakeControls() {
-        // Disable intake during launch sequence to prevent interference
+        // Intake is managed by launch sequence when not IDLE
         if (launchState != LaunchState.IDLE) return;
 
         if (gamepad1.right_trigger > 0.5) robot.intake.intake();
@@ -349,12 +366,23 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 telemetry.addLine(">>> ALIGNING... <<<");
                 telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES" : "NO");
                 telemetry.addData("  Launcher Ready", robot.launcher.isReady() ? "YES" : "NO");
+                telemetry.addData("  Angle Error", "%.1f°", robot.launcherAssist.getAngleErrorDegrees());
+                telemetry.addData("  Target Angle", "%.1f°", robot.launcherAssist.getTargetAngleDegrees());
+                telemetry.addData("  Current Heading", "%.1f°", robot.launcherAssist.getCurrentHeadingDegrees());
+                telemetry.addData("  Rotation Power", "%.2f", robot.launcherAssist.getLastRotationPower());
+                telemetry.addData("  Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());
                 break;
-            case FIRING_LEFT:
-                telemetry.addLine(">>> FIRING LEFT <<<");
+            case FIRING_LEFT_1:
+                telemetry.addLine(">>> FIRING LEFT 1/4 <<<");
                 break;
-            case FIRING_RIGHT:
-                telemetry.addLine(">>> FIRING RIGHT <<<");
+            case FIRING_RIGHT_1:
+                telemetry.addLine(">>> FIRING RIGHT 2/4 <<<");
+                break;
+            case FIRING_LEFT_2:
+                telemetry.addLine(">>> FIRING LEFT 3/4 <<<");
+                break;
+            case FIRING_RIGHT_2:
+                telemetry.addLine(">>> FIRING RIGHT 4/4 <<<");
                 break;
         }
         telemetry.addLine();
@@ -369,7 +397,9 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         telemetry.addLine();
         telemetry.addData("Alliance", alliance);
         telemetry.addData("Drive Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
-        telemetry.addData("Heading", "%.1f°", Math.toDegrees(follower.getHeading()));
+        Pose currentPose = follower.getPose();
+        telemetry.addData("Position", String.format("(%.1f, %.1f) @ %.1f°",
+                currentPose.getX(), currentPose.getY(), Math.toDegrees(currentPose.getHeading())));
 
         // Launcher status
         telemetry.addLine();

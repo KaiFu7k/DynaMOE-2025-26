@@ -69,6 +69,7 @@ public class FieldPositions {
         }
     }
 
+    public static Pose getPerimeterStartPose(Alliance a) { return a == Alliance.BLUE ? BLUE_PERIMETER_START : RED_PERIMETER_START; }
     public static Pose getLaunchPose(Alliance a) { return a == Alliance.BLUE ? BLUE_LAUNCH_POSE : RED_LAUNCH_POSE; }
     public static Pose getPerimeterLaunchPose(Alliance a) { return a == Alliance.BLUE ? BLUE_PERIMETER_LAUNCH_POSE : RED_PERIMETER_LAUNCH_POSE; }
     public static Pose getLeavePose(Alliance a) { return a == Alliance.BLUE ? BLUE_LEAVE_POSE : RED_LEAVE_POSE; }

@@ -58,7 +58,6 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
     // ==================== CONFIGURATION ====================
     private FieldPositions.Alliance alliance = FieldPositions.Alliance.BLUE;
-    private FieldPositions.StartPosition startPos = FieldPositions.StartPosition.BLUE_GOAL_SIDE;
 
     // ==================== DEBOUNCE ====================
     private ElapsedTime bumperDebounce = new ElapsedTime();
@@ -84,41 +83,33 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // === CONFIGURATION PHASE ===
         while (!isStarted() && !isStopRequested()) {
-            if (gamepad1.x) alliance = FieldPositions.Alliance.BLUE;
-            if (gamepad1.b) alliance = FieldPositions.Alliance.RED;
-
-            if (gamepad1.dpad_up) {
-                startPos = (alliance == FieldPositions.Alliance.BLUE) ?
-                        FieldPositions.StartPosition.BLUE_GOAL_SIDE : FieldPositions.StartPosition.RED_GOAL_SIDE;
-            }
-            if (gamepad1.dpad_down) {
-                startPos = (alliance == FieldPositions.Alliance.BLUE) ?
-                        FieldPositions.StartPosition.BLUE_PERIMETER_SIDE : FieldPositions.StartPosition.RED_PERIMETER_SIDE;
+            // Alliance selection (only matters for practice mode — auton mode inherits alliance)
+            if (!hasAutonPose) {
+                if (gamepad1.x) alliance = FieldPositions.Alliance.BLUE;
+                if (gamepad1.b) alliance = FieldPositions.Alliance.RED;
             }
 
             telemetry.addLine("=== DynaMOE 19889 TELEOP CONFIG ===");
+            telemetry.addLine();
 
             if (hasAutonPose) {
                 Pose autonPose = RobotState.getAutonEndPose();
-                telemetry.addLine(">>> AUTON POSE DETECTED <<<");
+                telemetry.addLine(">>> MATCH MODE (Auton pose detected) <<<");
                 telemetry.addData("Position from Auton", String.format("(%.1f, %.1f, %.1f°)",
                         autonPose.getX(), autonPose.getY(), Math.toDegrees(autonPose.getHeading())));
+                telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED");
                 telemetry.addData("Pose Age", "%.1f sec", RobotState.getPoseAgeSeconds());
-                telemetry.addLine();
             } else {
-                telemetry.addLine("(No Auton pose - using manual selection)");
+                Pose practicePose = FieldPositions.getPerimeterStartPose(alliance);
+                telemetry.addLine(">>> PRACTICE MODE (No Auton) <<<");
+                telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED");
+                telemetry.addData("Start Pose", String.format("(%.1f, %.1f, %.1f°)",
+                        practicePose.getX(), practicePose.getY(), Math.toDegrees(practicePose.getHeading())));
                 telemetry.addLine();
+                telemetry.addLine("X: Blue | B: Red");
+                telemetry.addLine("Place robot at PERIMETER START position");
             }
 
-            telemetry.addData("Alliance", alliance == FieldPositions.Alliance.BLUE ? "BLUE" : "RED");
-            if (!hasAutonPose) {
-                telemetry.addData("Start Side", startPos);
-            }
-            telemetry.addLine();
-            telemetry.addLine("X: Blue | B: Red");
-            if (!hasAutonPose) {
-                telemetry.addLine("D-Pad UP: Goal Side | D-Pad DOWN: Perimeter");
-            }
             telemetry.addLine();
             telemetry.addLine("Press START to initialize hardware");
             telemetry.update();
@@ -137,13 +128,15 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             if (RobotState.hasValidAutonPose()) {
                 Pose autonPose = RobotState.getAutonEndPose();
                 follower.setStartingPose(autonPose);
-                telemetry.addLine("Using pose from Auton:");
+                telemetry.addLine("Match mode — using pose from Auton:");
                 telemetry.addData("Position", String.format("(%.1f, %.1f, %.1f°)",
                         autonPose.getX(), autonPose.getY(), Math.toDegrees(autonPose.getHeading())));
             } else {
-                follower.setStartingPose(FieldPositions.getStartPose(startPos));
-                telemetry.addLine("Using manual start position:");
-                telemetry.addData("Position", startPos);
+                Pose practicePose = FieldPositions.getPerimeterStartPose(alliance);
+                follower.setStartingPose(practicePose);
+                telemetry.addLine("Practice mode — using perimeter start:");
+                telemetry.addData("Position", String.format("(%.1f, %.1f, %.1f°)",
+                        practicePose.getX(), practicePose.getY(), Math.toDegrees(practicePose.getHeading())));
             }
         }
 
@@ -338,10 +331,14 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             sleep(150);  // Debounce
         }
 
-        // A: Manual spin up
+        // A: Manual spin up | B: Manual stop
         if (gamepad1.a) {
             robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             manualLauncherActive = true;
+        }
+        if (gamepad1.b && manualLauncherActive) {
+            robot.launcher.stop();
+            manualLauncherActive = false;
         }
 
         // Manual feed (only when launcher active and ready)

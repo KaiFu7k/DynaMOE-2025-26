@@ -42,10 +42,10 @@ public class LauncherAssist {
     // Note: This is a PD controller (no Integral term used currently)
 
     /** Proportional gain - higher = faster response but more overshoot */
-    private static final double KP = 1.5;
+    private static final double KP = 1.0;
 
     /** Derivative gain - higher = more damping, reduces oscillation */
-    private static final double KD = 0.1;
+    private static final double KD = 0.3;
 
     /** Integral max (not currently used, but kept for future tuning) */
     private static final double INTEGRAL_MAX = 0.1;
@@ -173,8 +173,7 @@ public class LauncherAssist {
     public double getRotationPower() {
         // If already aligned, stop rotating and reset PD state
         if (isAligned) {
-            integralSum = 0;
-            previousError = 0;
+            // Don't reset previousError — keeps derivative smooth when oscillating near target
             return 0.0;
         }
 

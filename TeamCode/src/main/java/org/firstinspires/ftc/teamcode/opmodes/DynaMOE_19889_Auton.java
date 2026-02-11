@@ -361,6 +361,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         follower.followPath(path, true);
         while (follower.isBusy() && opModeIsActive()) {
             follower.update();
+            RobotState.saveAutonEndPose(follower.getPose(), alliance);
             updatePositionTelemetry(description, targetPose);
         }
     }
@@ -376,6 +377,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         follower.followPath(path, true);
         while (follower.isBusy() && opModeIsActive()) {
             follower.update();
+            RobotState.saveAutonEndPose(follower.getPose(), alliance);
             Pose currentPose = follower.getPose();
             telemetry.addData("Status", description);
             telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
@@ -403,6 +405,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         follower.followPath(path, true);
         while (follower.isBusy() && opModeIsActive()) {
             follower.update();
+            RobotState.saveAutonEndPose(follower.getPose(), alliance);
             Pose currentPose = follower.getPose();
             telemetry.addData("Status", description);
             telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));

@@ -323,10 +323,10 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // Gamepad2 D-pad adjusts manual speed
         if (gamepad2.dpad_up) {
-            manualLauncherSpeed = Math.min(manualLauncherSpeed + 50, LAUNCHER_MAX_SPEED);
+            manualLauncherSpeed = Math.min(manualLauncherSpeed + 10, LAUNCHER_MAX_SPEED);
             sleep(150);  // Debounce
         } else if (gamepad2.dpad_down) {
-            manualLauncherSpeed = Math.max(manualLauncherSpeed - 50, LAUNCHER_MIN_SPEED);
+            manualLauncherSpeed = Math.max(manualLauncherSpeed - 10, LAUNCHER_MIN_SPEED);
             sleep(150);  // Debounce
         }
 

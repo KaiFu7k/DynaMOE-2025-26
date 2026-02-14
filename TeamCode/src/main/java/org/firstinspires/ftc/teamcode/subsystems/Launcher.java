@@ -21,7 +21,7 @@ public class Launcher {
     public static final double LAUNCHER_FAR_TARGET_VELOCITY = 1520;
     public static final double LAUNCHER_FAR_MIN_VELOCITY = 1450;
 
-    private static final double FEED_TIME_SECONDS = 0.80;
+    private static final double FEED_TIME_SECONDS = 0.90;
     private static final double STOP_SPEED = 0.0;
     private static final double FULL_SPEED = 1.0;
     private DcMotorEx leftLauncher;

@@ -64,6 +64,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
 
 
     private static final double LAUNCHER_SPINUP_TIMEOUT = 3.0;
+    private static final double SPINUP_DELAY_SECONDS = 2.0;
 
 
     // ==================== HARDWARE & SUBSYSTEMS ====================
@@ -263,7 +264,9 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeXtop, 84, heading), "Step 3: Intaking at TOP SPIKE");
-        followPathChainWithSpinup(buildReturnToLaunch(), "Step 4: TOP SPIKE to LAUNCH", launchPose);
+        robot.intake.stop();
+        followPathChainWithSpinup(buildReturnToLaunch(), "Step 4: TOP SPIKE to LAUNCH", launchPose, SPINUP_DELAY_SECONDS);
+        robot.intake.intake();
         launchArtifacts();
         robot.launcher.stop();
 
@@ -273,7 +276,9 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
         moveToPosition(new Pose(spikeXBack, 58, heading), "Step 7: Backing from wall");
-        followPathChainWithSpinup(buildReturnToLaunch(), "Step 8: MIDDLE SPIKE to LAUNCH", launchPose);
+        robot.intake.stop();
+        followPathChainWithSpinup(buildReturnToLaunch(), "Step 8: MIDDLE SPIKE to LAUNCH", launchPose, SPINUP_DELAY_SECONDS);
+        robot.intake.intake();
         launchArtifacts();
         robot.launcher.stop();
 
@@ -282,8 +287,10 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         robot.intake.intake();
         addSimulatedArtifacts();
         moveToPosition(new Pose(spikeX, 36, heading), "Step 10: Intaking at BOTTOM SPIKE");
+        robot.intake.stop();
         followPathChainWithSpinup(buildBottomSpikeToFinalLaunch(),
-                "Step 11: BOTTOM SPIKE to FINAL LAUNCH", finalLaunchPose);
+                "Step 11: BOTTOM SPIKE to FINAL LAUNCH", finalLaunchPose, SPINUP_DELAY_SECONDS);
+        robot.intake.intake();
         launchArtifacts();
 
         // Park at final launch position — off launch zone lines for parking points
@@ -370,24 +377,45 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
     }
 
 
-    /** Follow path while spinning up launcher to LERP-table velocity for the destination. */
+    /** Follow path while spinning up launcher to LERP-table velocity for the destination.
+     *  Launcher starts immediately. */
     private void followPathChainWithSpinup(PathChain path, String description, Pose destPose) {
+        followPathChainWithSpinup(path, description, destPose, 0);
+    }
+
+    /** Follow path with launcher spinup delayed by delaySeconds into the path. */
+    private void followPathChainWithSpinup(PathChain path, String description, Pose destPose, double delaySeconds) {
         robot.logger.info("Movement", description + " (spinning up launcher)");
 
-        // Calculate velocity from LERP table based on destination distance to goal
         double velocity = getVelocityForPose(destPose);
-        robot.launcher.setTargetVelocity(velocity, velocity - 50);
+        boolean launcherStarted = (delaySeconds <= 0);
+        if (launcherStarted) {
+            robot.launcher.setTargetVelocity(velocity, velocity - 50);
+        }
 
+        ElapsedTime pathTimer = new ElapsedTime();
         follower.followPath(path, true);
         while (follower.isBusy() && opModeIsActive()) {
             follower.update();
+
+            // Delayed spinup
+            if (!launcherStarted && pathTimer.seconds() >= delaySeconds) {
+                robot.launcher.setTargetVelocity(velocity, velocity - 50);
+                launcherStarted = true;
+            }
+
             RobotState.saveAutonEndPose(follower.getPose(), alliance);
             Pose currentPose = follower.getPose();
             telemetry.addData("Status", description);
             telemetry.addData("Current", String.format("%.1f, %.1f", currentPose.getX(), currentPose.getY()));
             telemetry.addData("Launcher Vel", "%.0f RPM", velocity);
-            telemetry.addData("Launcher", robot.launcher.isReady() ? "READY" : "Spinning...");
+            telemetry.addData("Launcher", launcherStarted ? (robot.launcher.isReady() ? "READY" : "Spinning...") : "Delayed...");
             telemetry.update();
+        }
+
+        // Start launcher if path finished before delay elapsed
+        if (!launcherStarted) {
+            robot.launcher.setTargetVelocity(velocity, velocity - 50);
         }
 
         // Path done — wait for launcher if not ready yet
@@ -417,8 +445,7 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         return LauncherAssist.calculateVelocity(dist);
     }
 
-    /** Fire L, R, L, R — 4 feeds guarantees all 3 artifacts launch regardless of which side they're on.
-     *  Uses the center heading (splits the difference between L and R offsets). */
+    /** Fire L, R, L, R — 4 feeds guarantees all 3 artifacts launch regardless of which side they're on. */
     private void launchArtifacts() {
         LauncherSide[] order = { LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT, LauncherSide.RIGHT };
         for (LauncherSide side : order) {

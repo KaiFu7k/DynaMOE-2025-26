@@ -76,21 +76,22 @@ public class LauncherAssist {
      * TUNED VALUES from testing on 2026-02-03
      * The code uses Linear Interpolation (LERP) between these points.
      *
-     * Note: Data shows velocity plateaus around 1180 RPM for 70-90 inch range,
-     * then increases steadily from 100+ inches.
+     * Re-tuned 2026-02-14 with new field test data.
+     * Close range (36-60 in) added, 100+ inch range corrected upward significantly.
      */
     private static final double[][] VELOCITY_TABLE = {
-        {72.73, 1090},    // Close shot
-        {82.73, 1170},    //
-        {92.73, 1180},    // Velocity plateaus here
-        {102.73, 1180},   // Still plateau
-        {113.73, 1230},   // Starting to increase
-        {125.73, 1250},   //
-        {132.73, 1300},   //
-        {142.73, 1320},   //
-        {155.73, 1420},   // Steeper increase
-        {162.73, 1490},   // Far shot
-        {169.73, 1480}    // Max distance tested (slight decrease - may be measurement variance)
+        {36, 1040},       // Very close (114.9, 100.6)
+        {51, 1110},       // Close (81.6, 129.9)
+        {55, 1110},       // Close (80.7, 114.7)
+        {58, 1120},       // Close-mid (93.3, 89.2)
+        {60, 1070},       // Close-mid (81.3, 100.3)
+        {80, 1180},       // Mid (78.6, 73.5)
+        {88, 1220},       // Mid (76.5, 64.5)
+        {107, 1300},      // Mid-far (96.4, 31.8)
+        {124, 1443},      // Far — avg of 1480, 1400, 1450 at 123-129 in
+        {155, 1420},      // Original far
+        {163, 1490},      // Original far
+        {170, 1480}       // Max distance tested
     };
 
     // ==================== STATE VARIABLES ====================

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Robot code for DynaMOE Team 19889, FIRST Tech Challenge DECODE 2025-26 season. Uses modular subsystem architecture shared between Autonomous and TeleOp.
+Robot code for DynaMOE Team 19889, FIRST Tech Challenge DECODE 2025-26 season. Uses modular subsystem architecture shared between Autonomous and TeleOp. Autonomous is built on the **Ivy** command framework (`com.pedropathing:ivy`) for Pedro Pathing.
 
 ## Directory Structure
 
@@ -43,10 +43,12 @@ robot.stopAllSubsystems();
 
 ## Competition OpModes
 
-### Autonomous
+### Autonomous (Ivy Command-Based)
 D-Pad selects position: UP=Blue Goal, DOWN=Blue Perimeter, LEFT=Red Goal, RIGHT=Red Perimeter
 
-Pose is automatically saved at end of Auton for TeleOp to use.
+Uses Ivy's `Scheduler` with composable commands (`sequential`, `parallel`, `race`, `follow`, `instant`, `waitMs`, `waitUntil`). All paths are pre-built during init. Background `infinite` commands handle `follower.update()`, subsystem updates, and pose saving every tick.
+
+Pose is continuously saved for TeleOp via `RobotState`.
 
 ### TeleOp Controls
 
@@ -90,4 +92,4 @@ Pose is automatically saved at end of Auton for TeleOp to use.
 ## Team Info
 **Team:** DynaMOE 19889 | **Season:** DECODE 2025-26
 
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-14

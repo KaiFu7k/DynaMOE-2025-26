@@ -4,7 +4,7 @@ Context for AI assistants working with DynaMOE Team 19889 FTC robot code.
 
 ## Project Info
 - **Team:** DynaMOE 19889 | **Season:** DECODE 2025-26
-- **Language:** Java | **Framework:** FTC SDK
+- **Language:** Java | **Framework:** FTC SDK + Ivy (Pedro Pathing command framework)
 - **Robot:** Mecanum drive with dual launcher
 
 ## Architecture
@@ -16,9 +16,19 @@ opmodes/       - OpModes (DynaMOE_19889_Auton, DynaMOE_19889_TeleOp, LauncherVel
 robot/         - RobotHardware.java (aggregates subsystems)
 subsystems/    - Drivetrain, Launcher, Intake, ArtifactManager, LauncherAssist
 util/          - RobotEnums, FieldPositions, MotifDetector, RobotLogger, RobotState
-pedroPathing/  - Autonomous navigation
+pedroPathing/  - Autonomous navigation (Pedro Pathing follower + constants)
 states/        - AprilTag vision
 ```
+
+### Ivy Command Framework (Autonomous)
+
+Autonomous uses the **Ivy** command library (`com.pedropathing:ivy`) — a command-based scheduler on top of Pedro Pathing. Key concepts:
+
+- **Scheduler**: `Scheduler.reset()` in init, `Scheduler.execute()` in main loop. Commands are registered via `schedule()`.
+- **Commands**: `instant()` (run once), `waitMs()`, `waitUntil()`, `infinite()` (runs every tick)
+- **Groups**: `sequential()`, `parallel()` (all must finish), `race()` (first to finish wins)
+- **Pedro integration**: `follow(follower, pathChain)` wraps path following as a command
+- **Background commands**: `infinite(() -> follower.update())` and `infinite(() -> robot.updateSubsystems())` run every tick alongside the main sequence
 
 ## Hardware Config Names
 
@@ -38,8 +48,10 @@ states/        - AprilTag vision
 |------|-------|----------------|
 | Launcher velocity | `Launcher.java` | Close: 1150 RPM, Far: 1520 RPM |
 | Auto-velocity table | `LauncherAssist.java` | See table below (tuned 2026-02-03) |
-| Perimeter launch | `DynaMOE_19889_Auton.java` | 1380 RPM (~138 in distance) |
-| Goal-side final launch | `DynaMOE_19889_Auton.java` | 1170 RPM (~70 in distance) |
+| Perimeter launch | `DynaMOE_19889_Auton.java` | Auto-calculated from LERP table |
+| Goal-side final launch | `DynaMOE_19889_Auton.java` | Auto-calculated from LERP table |
+| Spinup delay | `DynaMOE_19889_Auton.java` | 800 ms |
+| Launcher spinup timeout | `DynaMOE_19889_Auton.java` | 1500 ms |
 | Field positions | `FieldPositions.java` | See file for coordinates |
 | PID constants | `LauncherAssist.java` | Kp=1.5, Kd=0.1 |
 
@@ -67,19 +79,20 @@ states/        - AprilTag vision
 4. Bottom spike (Y=36) — intake at x=15, go to final launch (60,108)/(84,108) at 1170 RPM
 5. Park at final launch position (off launch zone lines)
 
-### Perimeter-Side (9 artifacts)
-1. Score 3 preloads at (48,15)/(96,15) — 1380 RPM (~138 in)
-2. Bottom spike (Y=36) — intake at x=15, return to perimeter launch, score
-3. Middle spike (Y=58) — intake at x=15, return to perimeter launch, score
-4. Park at (36,12)/(108,12)
+### Perimeter-Side (Stub — preloads only)
+1. Wait 24 seconds
+2. Score 3 preloads at (48,15)/(96,15) — LERP table velocity
+3. Park at (85,35)
 
 ### Key Auton Features
-- Launcher spins up while traveling to launch position (saves ~2s per cycle)
-- Intake runs continuously during scoring to keep artifacts seated
-- No `follower.update()` during scoring (prevents robot jiggle)
+- **Ivy command-based**: Entire auto is a `schedule(sequential(...))` with composable commands
+- **Pre-built paths**: All PathChains built during init from fixed poses (not dynamic)
+- **Parallel spinup**: `parallel(follow(...), sequential(waitMs(delay), spinUpLauncher()))` spins up launcher while driving
+- **Background updates**: `infinite(() -> follower.update())`, `infinite(() -> robot.updateSubsystems())`, and `infinite(() -> RobotState.saveAutonEndPose(...))` run every scheduler tick
+- **Launcher readiness**: `race(waitUntil(isReady), waitMs(timeout))` waits for launcher with timeout
+- **shootSide command**: `sequential(instant(startFeed), waitMs(900), instant(stopFeeders))` for each feed
 - BezierLine paths only (BezierCurve abandoned — unreliable)
-- Paths built dynamically from current position (not pre-built)
-- Pose saved for TeleOp via `RobotState` at end of auton
+- Pose continuously saved for TeleOp via `RobotState`
 
 ## TeleOp Controls
 
@@ -161,8 +174,10 @@ GPP, PGP, PPG (G=Green, P=Purple) - order artifacts must be launched.
 | Auto path off | FieldPositions, starting position selection |
 | Wrong velocity | Check distance calculation, verify pose is set correctly |
 | Robot spins during TeleOp launch | Check starting pose matches reality, verify no duplicate launcherAssist.update() |
-| Robot jiggle during scoring | Ensure no follower.update() in scoring loops |
-| Spike overshoot into wall | Use separate moveToPosition calls (not chained paths) |
+| Robot jiggle during scoring | Ivy handles this — follower.update() runs via infinite command but follow() commands are sequential |
+| Spike overshoot into wall | Use separate follow() commands (not chained paths) |
+| Scheduler not running | Ensure Scheduler.reset() in init, Scheduler.execute() in while loop |
+| Commands not executing | Check schedule() was called after waitForStart() |
 
 ## AI Guidelines
 
@@ -171,7 +186,8 @@ GPP, PGP, PPG (G=Green, P=Purple) - order artifacts must be launched.
 3. **Hardware safety** - No excessive speeds or conflicting commands
 4. **Keep simple** - Reliability over cleverness
 5. **BezierLine only** - BezierCurve was tried and abandoned (unpredictable)
-6. **No follower.update() in scoring** - Causes robot movement during launching
+6. **Use Ivy commands** - Autonomous uses Ivy scheduler; don't mix blocking loops with Ivy commands
+7. **Pre-build paths** - All paths built during init from fixed poses, not dynamically from current pose
 
 ## Last Updated
-2026-02-06
+2026-02-14

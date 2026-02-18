@@ -333,12 +333,16 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
 
         // A: Manual spin up | B: Manual stop
         if (gamepad1.a) {
-            robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
             manualLauncherActive = true;
         }
         if (gamepad1.b && manualLauncherActive) {
             robot.launcher.stop();
             manualLauncherActive = false;
+        }
+
+        // Continuously apply manual speed so D-pad changes take effect immediately
+        if (manualLauncherActive) {
+            robot.launcher.setTargetVelocity(manualLauncherSpeed, manualLauncherSpeed - 25);
         }
 
         // Manual feed (only when launcher active and ready)
@@ -397,12 +401,19 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         Pose currentPose = follower.getPose();
         telemetry.addData("Position", String.format("(%.1f, %.1f) @ %.1f°",
                 currentPose.getX(), currentPose.getY(), Math.toDegrees(currentPose.getHeading())));
+        telemetry.addData("Total Heading", "%.1f°", Math.toDegrees(follower.getTotalHeading()));
 
         // Launcher status
         telemetry.addLine();
         double[] vel = robot.launcher.getVelocities();
-        telemetry.addData("Launcher L/R", "%.0f / %.0f RPM", vel[0], vel[1]);
-        telemetry.addData("Manual Speed", "%.0f RPM", manualLauncherSpeed);
+        telemetry.addData("Launcher L/R (actual)", "%.0f / %.0f RPM", vel[0], vel[1]);
+        if (launchState == LaunchState.ALIGNING || launchState == LaunchState.FIRING) {
+            telemetry.addData("Target (auto)", "%.0f RPM", robot.launcherAssist.getRecommendedVelocity());
+        } else if (manualLauncherActive) {
+            telemetry.addData("Target (manual)", "%.0f RPM", manualLauncherSpeed);
+        } else {
+            telemetry.addData("Manual Speed Setting", "%.0f RPM (GP2 D-pad to adjust)", manualLauncherSpeed);
+        }
 
         telemetry.update();
     }

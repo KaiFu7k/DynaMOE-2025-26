@@ -1,9 +1,13 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import com.acmerobotics.dashboard.config.Config;
+import com.pedropathing.control.PIDFCoefficients;
+import com.pedropathing.control.PIDFController;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.util.FieldPositions;
+import org.firstinspires.ftc.teamcode.util.RobotEnums.LauncherSide;
 
 /**
  * LauncherAssist Subsystem for DynaMOE Team 19889
@@ -25,6 +29,7 @@ import org.firstinspires.ftc.teamcode.util.FieldPositions;
  * 3. Use getRecommendedVelocity() to set launcher speed automatically
  * 4. Check isAligned() to know when robot is aimed at goal
  */
+@Config
 public class LauncherAssist {
 
     // ==================== ALIGNMENT CONSTANTS ====================
@@ -33,22 +38,34 @@ public class LauncherAssist {
     private static final double ALIGNMENT_TOLERANCE_DEGREES = 4.0;
 
     /** Maximum rotation speed (0 to 1) - limits how fast robot can spin during alignment */
-    private static final double ROTATION_SPEED = 0.6;
+    private static final double ROTATION_SPEED = 1;
 
     /** Minimum power to overcome static friction - robot won't move below this */
     private static final double MIN_ROTATION_POWER = 0.18;
 
-    // ==================== PD CONTROLLER CONSTANTS ====================
-    // Note: This is a PD controller (no Integral term used currently)
+    // ==================== LAUNCHER OFFSET ====================
+    /** Distance (inches) from robot center to each launcher, perpendicular to heading */
+    private static final double LAUNCHER_OFFSET_INCHES = 3.1875;
 
-    /** Proportional gain - higher = faster response but more overshoot */
-    private static final double KP = 1.0;
+    // ==================== DUAL PIDF CONSTANTS ====================
+    // Uses Pedro's PIDFController with piecewise switching:
+    //   - Primary PIDF: used when |heading error| > HEADING_PIDF_SWITCH (aggressive)
+    //   - Secondary PIDF: used when |heading error| <= HEADING_PIDF_SWITCH (fine-tuning)
 
-    /** Derivative gain - higher = more damping, reduces oscillation */
-    private static final double KD = 0.3;
+    /** Threshold (radians) for switching between primary and secondary PIDF */
+    private static final double HEADING_PIDF_SWITCH = Math.PI / 20;  // 9 degrees
 
-    /** Integral max (not currently used, but kept for future tuning) */
-    private static final double INTEGRAL_MAX = 0.1;
+    // Primary PIDF coefficients (large error - aggressive correction)
+    public static double PRIMARY_KP = 3.0;
+    public static double PRIMARY_KI = 0;
+    public static double PRIMARY_KD = 0.05;
+    public static double PRIMARY_KF = 0.025;
+
+    // Secondary PIDF coefficients (small error - fine-tuning)
+    public static double SECONDARY_KP = 1.0;
+    public static double SECONDARY_KI = 0;
+    public static double SECONDARY_KD = 0.02;
+    public static double SECONDARY_KF = 0.025;
 
     // ==================== VELOCITY TABLE ====================
     /**
@@ -59,21 +76,22 @@ public class LauncherAssist {
      * TUNED VALUES from testing on 2026-02-03
      * The code uses Linear Interpolation (LERP) between these points.
      *
-     * Note: Data shows velocity plateaus around 1180 RPM for 70-90 inch range,
-     * then increases steadily from 100+ inches.
+     * Re-tuned 2026-02-14 with new field test data.
+     * Close range (36-60 in) added, 100+ inch range corrected upward significantly.
      */
     private static final double[][] VELOCITY_TABLE = {
-        {60, 1090},    // Close shot
-        {70, 1170},    //
-        {80, 1180},    // Velocity plateaus here
-        {90, 1180},    // Still plateau
-        {101, 1230},   // Starting to increase
-        {113, 1250},   //
-        {120, 1300},   //
-        {130, 1320},   //
-        {143, 1420},   // Steeper increase
-        {150, 1490},   // Far shot
-        {157, 1480}    // Max distance tested (slight decrease - may be measurement variance)
+        {36, 1040},       // Very close (114.9, 100.6)
+        {51, 1110},       // Close (81.6, 129.9)
+        {55, 1110},       // Close (80.7, 114.7)
+        {58, 1120},       // Close-mid (93.3, 89.2)
+        {60, 1070},       // Close-mid (81.3, 100.3)
+        {80, 1180},       // Mid (78.6, 73.5)
+        {88, 1220},       // Mid (76.5, 64.5)
+        {107, 1300},      // Mid-far (96.4, 31.8)
+        {124, 1443},      // Far — avg of 1480, 1400, 1450 at 123-129 in
+        {155, 1420},      // Original far
+        {163, 1490},      // Original far
+        {170, 1480}       // Max distance tested
     };
 
     // ==================== STATE VARIABLES ====================
@@ -83,15 +101,15 @@ public class LauncherAssist {
     private FieldPositions.Alliance currentAlliance;  // BLUE or RED (determines goal position)
 
     private double distanceToGoal = 0;   // Calculated distance in inches
-    private double angleToGoal = 0;      // Angle FROM robot TO goal (radians)
+    private double angleToGoal = 0;      // Angle FROM launcher TO goal (radians)
     private double angleError = 0;       // Difference between current heading and target (radians)
     private double recommendedVelocity = 0;  // Calculated launcher RPM
     private boolean isAligned = false;   // True when robot is aimed at goal (within tolerance)
+    private LauncherSide activeSide = LauncherSide.LEFT;  // Which launcher we're currently aligning for
 
-    // PD Controller state
-    private double previousError = 0;    // Last loop's angle error (for derivative)
-    private double integralSum = 0;      // Accumulated error (not currently used)
-    private long lastUpdateTime = 0;     // Timestamp for dt calculation
+    // Dual PIDF Controllers (two separate instances, like Pedro's Follower)
+    private PIDFController headingPIDF;           // Primary: large errors
+    private PIDFController secondaryHeadingPIDF;  // Secondary: small errors (fine-tuning)
     private double lastRotationPower = 0; // Last output (for telemetry/debugging)
 
     // ==================== CONSTRUCTOR ====================
@@ -106,7 +124,21 @@ public class LauncherAssist {
         this.follower = follower;
         this.currentAlliance = alliance;
         this.telemetry = telemetry;
-        this.lastUpdateTime = System.currentTimeMillis();
+        buildHeadingPIDF();
+    }
+
+    /**
+     * Builds the two separate heading PIDFControllers (matching Pedro's Follower approach).
+     * Each controller has its own independent integral/derivative state.
+     * Primary is used for large errors, secondary for fine-tuning near target.
+     */
+    private void buildHeadingPIDF() {
+        headingPIDF = new PIDFController(
+            new PIDFCoefficients(PRIMARY_KP, PRIMARY_KI, PRIMARY_KD, PRIMARY_KF)
+        );
+        secondaryHeadingPIDF = new PIDFController(
+            new PIDFCoefficients(SECONDARY_KP, SECONDARY_KI, SECONDARY_KD, SECONDARY_KF)
+        );
     }
 
     // ==================== MAIN UPDATE METHOD ====================
@@ -126,25 +158,41 @@ public class LauncherAssist {
     public void update() {
         // Get current robot position from odometry
         Pose currentPose = follower.getPose();
+        double heading = currentPose.getHeading();
+
+        // Offset the origin point from robot center to the active launcher.
+        // "Left" of the robot's heading = +90° from heading (perpendicular left).
+        // LEFT launcher is to the left of center → offset in the +perpendicular direction.
+        // RIGHT launcher is to the right → offset in the -perpendicular direction.
+        double launcherX = currentPose.getX();
+        double launcherY = currentPose.getY();
+
+        if (activeSide == LauncherSide.LEFT) {
+            // Perpendicular left = heading + PI/2
+            launcherX += LAUNCHER_OFFSET_INCHES * Math.cos(heading + Math.PI / 2);
+            launcherY += LAUNCHER_OFFSET_INCHES * Math.sin(heading + Math.PI / 2);
+        } else if (activeSide == LauncherSide.RIGHT) {
+            // Perpendicular right = heading - PI/2
+            launcherX += LAUNCHER_OFFSET_INCHES * Math.cos(heading - Math.PI / 2);
+            launcherY += LAUNCHER_OFFSET_INCHES * Math.sin(heading - Math.PI / 2);
+        }
+        // LauncherSide.BOTH → no offset, use robot center
 
         // Get goal position based on alliance (Blue goal or Red goal)
         Pose goalPose = FieldPositions.getGoalPosition(currentAlliance);
 
-        // Calculate vector from robot to goal
-        double dx = goalPose.getX() - currentPose.getX();
-        double dy = goalPose.getY() - currentPose.getY();
+        // Calculate vector from launcher position to goal
+        double dx = goalPose.getX() - launcherX;
+        double dy = goalPose.getY() - launcherY;
 
-        // Distance = magnitude of vector (Pythagorean theorem)
+        // Distance from launcher to goal
         distanceToGoal = Math.sqrt(dx * dx + dy * dy);
 
-        // Angle to goal = direction of vector (atan2 handles all quadrants correctly)
-        // Result is in radians, 0 = right, PI/2 = up, PI = left, -PI/2 = down
+        // Angle from launcher to goal
         angleToGoal = Math.atan2(dy, dx);
 
-        // Error = how far we need to rotate
-        // Positive error = need to rotate counter-clockwise
-        // Negative error = need to rotate clockwise
-        angleError = normalizeAngle(angleToGoal - currentPose.getHeading());
+        // Error = how far we need to rotate so the launcher points at goal
+        angleError = normalizeAngle(angleToGoal - heading);
 
         // Check if we're close enough to be considered "aligned"
         isAligned = Math.abs(Math.toDegrees(angleError)) < ALIGNMENT_TOLERANCE_DEGREES;
@@ -171,37 +219,30 @@ public class LauncherAssist {
      *         Use this as 'rx' in drivetrain calculations when auto-align is active
      */
     public double getRotationPower() {
-        // If already aligned, stop rotating and reset PD state
-        if (isAligned) {
-            // Don't reset previousError — keeps derivative smooth when oscillating near target
-            return 0.0;
+        // Turn direction: +1 for CCW, -1 for CW (used as feedforward input)
+        double turnDirection = (angleError > 0) ? 1 : -1;
+
+        double pidfOutput;
+
+        // Switch between controllers based on error magnitude (same as Pedro's Follower)
+        if (Math.abs(angleError) < HEADING_PIDF_SWITCH) {
+            // Small error: use secondary (fine-tuning) controller
+            secondaryHeadingPIDF.updateFeedForwardInput(turnDirection);
+            secondaryHeadingPIDF.updateError(angleError);
+            pidfOutput = secondaryHeadingPIDF.run();
+        } else {
+            // Large error: use primary (aggressive) controller
+            headingPIDF.updateFeedForwardInput(turnDirection);
+            headingPIDF.updateError(angleError);
+            pidfOutput = headingPIDF.run();
         }
 
-        // Calculate time since last update (for derivative term)
-        long currentTime = System.currentTimeMillis();
-        double dt = (currentTime - lastUpdateTime) / 1000.0;  // Convert to seconds
-        lastUpdateTime = currentTime;
-
-        // Sanity check dt - if too small or too large, use default
-        if (dt <= 0 || dt > 0.5) dt = 0.02;  // Assume ~50Hz loop rate
-
-        // PD Controller calculation
-        double proportional = KP * angleError;                    // P: proportional to error
-        double derivative = KD * (angleError - previousError) / dt;  // D: rate of change
-        previousError = angleError;
-
-        // Calculate output power
-        // Negative sign: positive error (CCW needed) requires negative rx (CCW rotation)
-        double rotationPower = -(proportional + derivative);
+        // Positive error (need CCW) → positive PIDF output → positive rx
+        // In mecanum math: +rx → left side faster, right side slower → CCW rotation ✓
+        double rotationPower = -pidfOutput;
 
         // Clamp to max rotation speed
         rotationPower = Math.max(-ROTATION_SPEED, Math.min(ROTATION_SPEED, rotationPower));
-
-        // Apply minimum power to overcome static friction
-        // Only if we're trying to move (power > 0.01) but below minimum threshold
-        if (Math.abs(rotationPower) > 0.01 && Math.abs(rotationPower) < MIN_ROTATION_POWER) {
-            rotationPower = Math.signum(rotationPower) * MIN_ROTATION_POWER;
-        }
 
         lastRotationPower = rotationPower;
         return rotationPower;
@@ -222,7 +263,7 @@ public class LauncherAssist {
      * @param distance Distance to goal in inches
      * @return Recommended launcher velocity in RPM
      */
-    private double calculateVelocity(double distance) {
+    public static double calculateVelocity(double distance) {
         // Below minimum distance - return lowest velocity
         if (distance <= VELOCITY_TABLE[0][0]) {
             return VELOCITY_TABLE[0][1];
@@ -256,6 +297,39 @@ public class LauncherAssist {
     }
 
     // ==================== UTILITY METHODS ====================
+
+    /**
+     * Compute the robot heading (radians) needed so that a specific launcher side
+     * at the given robot center position aims at the goal.
+     *
+     * Uses one iteration: compute the launcher offset position assuming the nominal
+     * center-aimed heading, then recalculate the heading from that offset position.
+     * At typical distances (50-170 in) with a 3.1875" offset, the error is negligible.
+     *
+     * @param robotX   Robot center X position
+     * @param robotY   Robot center Y position
+     * @param goalX    Goal X position
+     * @param goalY    Goal Y position
+     * @param side     Which launcher side (LEFT, RIGHT, or BOTH for center)
+     * @return Heading in radians that aims the specified launcher at the goal
+     */
+    public static double getHeadingForSide(double robotX, double robotY,
+                                           double goalX, double goalY, LauncherSide side) {
+        // Start with the center-aimed heading
+        double nominalHeading = Math.atan2(goalY - robotY, goalX - robotX);
+
+        if (side == LauncherSide.BOTH) return nominalHeading;
+
+        // Compute launcher position at that nominal heading
+        double perpAngle = (side == LauncherSide.LEFT)
+                ? nominalHeading + Math.PI / 2
+                : nominalHeading - Math.PI / 2;
+        double launcherX = robotX + LAUNCHER_OFFSET_INCHES * Math.cos(perpAngle);
+        double launcherY = robotY + LAUNCHER_OFFSET_INCHES * Math.sin(perpAngle);
+
+        // Recompute heading from the offset launcher position to the goal
+        return Math.atan2(goalY - launcherY, goalX - launcherX);
+    }
 
     /**
      * Normalize angle to range [-PI, PI]
@@ -299,10 +373,12 @@ public class LauncherAssist {
     /** Set alliance (call if alliance changes or was set wrong) */
     public void setAlliance(FieldPositions.Alliance alliance) { this.currentAlliance = alliance; }
 
-    /** Reset PD controller state (call when enabling/disabling auto-align) */
+    /** Set which launcher side we're aligning for (offsets aim point from robot center) */
+    public void setActiveSide(LauncherSide side) { this.activeSide = side; }
+
+    /** Reset both PIDF controllers' state (call when enabling/disabling auto-align) */
     public void resetPID() {
-        integralSum = 0;
-        previousError = 0;
-        lastUpdateTime = System.currentTimeMillis();
+        headingPIDF.reset();
+        secondaryHeadingPIDF.reset();
     }
 }

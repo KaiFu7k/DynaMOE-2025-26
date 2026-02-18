@@ -41,8 +41,8 @@ public class FieldPositions {
     public static final Pose RED_PARK_POSE = new Pose(96, 36, Math.toRadians(0));
 
     // Goal positions (for auto-alignment)
-    public static final Pose BLUE_GOAL_POSITION = new Pose(9, 132.5, Math.toRadians(135));
-    public static final Pose RED_GOAL_POSITION = new Pose(132.5, 132.5, Math.toRadians(45));
+    public static final Pose BLUE_GOAL_POSITION = new Pose(0, 144, Math.toRadians(135));
+    public static final Pose RED_GOAL_POSITION = new Pose(144, 144, Math.toRadians(45));
 
     // Goal dimensions
     public static final double GOAL_HEIGHT_CENTER_INCHES = 46.25;

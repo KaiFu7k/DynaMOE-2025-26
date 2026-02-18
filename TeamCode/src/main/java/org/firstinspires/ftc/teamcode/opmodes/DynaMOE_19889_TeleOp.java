@@ -34,15 +34,13 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
     // ==================== LAUNCH STATE MACHINE ====================
     private enum LaunchState {
         IDLE,           // Normal driving, launcher off
-        ALIGNING,       // Auto-align active, spinning up launcher (aligns for current firingSide)
-        FIRING          // Feeding the current side
+        ALIGNING,       // Auto-align active, spinning up launcher
+        FIRING_LEFT_1,  // Feeding left side (1st)
+        FIRING_RIGHT_1, // Feeding right side (1st)
+        FIRING_LEFT_2,  // Feeding left side (2nd)
+        FIRING_RIGHT_2  // Feeding right side (2nd)
     }
-    // Firing sequence: L, R, L, R (indices 0-3)
-    private static final LauncherSide[] FIRE_SEQUENCE = {
-        LauncherSide.LEFT, LauncherSide.RIGHT, LauncherSide.LEFT, LauncherSide.RIGHT
-    };
     private LaunchState launchState = LaunchState.IDLE;
-    private int fireStep = 0;              // Current index in FIRE_SEQUENCE (0-3)
     private ElapsedTime launchTimer = new ElapsedTime();
     private static final double LAUNCH_TIMEOUT_SECONDS = 2.5;  // Max time in ALIGNING state
     private static final double MAX_ROTATION_DEGREES = 400;    // Abort if robot spins this much total
@@ -180,8 +178,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
             case ALIGNING:
                 handleAligningState();
                 break;
-            case FIRING:
-                handleFiringState();
+            case FIRING_LEFT_1:
+                handleFiringState(LaunchState.FIRING_RIGHT_1, LauncherSide.RIGHT);
+                break;
+            case FIRING_RIGHT_1:
+                handleFiringState(LaunchState.FIRING_LEFT_2, LauncherSide.LEFT);
+                break;
+            case FIRING_LEFT_2:
+                handleFiringState(LaunchState.FIRING_RIGHT_2, LauncherSide.RIGHT);
+                break;
+            case FIRING_RIGHT_2:
+                handleFinalFiringState();
                 break;
         }
     }
@@ -190,22 +197,15 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         // Right Bumper starts launch sequence
         if (gamepad1.right_bumper && bumperDebounce.seconds() > DEBOUNCE_TIME) {
             if (robot.launcherAssist != null) {
-                fireStep = 0;
-                startAligningForCurrentStep();
+                launchState = LaunchState.ALIGNING;
+                robot.launcherAssist.resetPID();
+                robot.intake.intake();  // Keep intake running to seat artifacts against feeders
+                launchTimer.reset();
+                totalRotationDegrees = 0;
+                lastHeadingForRotation = Math.toDegrees(follower.getPose().getHeading());
                 bumperDebounce.reset();
             }
         }
-    }
-
-    /** Transition to ALIGNING state for the current fireStep's launcher side */
-    private void startAligningForCurrentStep() {
-        launchState = LaunchState.ALIGNING;
-        robot.launcherAssist.setActiveSide(FIRE_SEQUENCE[fireStep]);
-        robot.launcherAssist.resetPID();
-        robot.intake.intake();  // Keep intake running to seat artifacts against feeders
-        launchTimer.reset();
-        totalRotationDegrees = 0;
-        lastHeadingForRotation = Math.toDegrees(follower.getPose().getHeading());
     }
 
     private void handleAligningState() {
@@ -218,9 +218,9 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         boolean ready = robot.launcher.isReady();
 
         if (aligned && ready) {
-            // Fire the current side
-            launchState = LaunchState.FIRING;
-            robot.launcher.startFeed(FIRE_SEQUENCE[fireStep]);
+            // Transition to firing: L, R, L, R sequence (2 per side to guarantee all 3 fire)
+            launchState = LaunchState.FIRING_LEFT_1;
+            robot.launcher.startFeed(LauncherSide.LEFT);
         }
 
         // Track total rotation to detect spinning
@@ -238,18 +238,19 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
         }
     }
 
-    private void handleFiringState() {
-        // Wait for current feed to complete
+    private void handleFiringState(LaunchState nextState, LauncherSide nextSide) {
+        // Wait for current feed to complete, then fire next side
         if (!robot.launcher.isFeeding()) {
-            fireStep++;
-            if (fireStep >= FIRE_SEQUENCE.length) {
-                // All shots fired — done
-                robot.launcher.stop();
-                launchState = LaunchState.IDLE;
-            } else {
-                // Re-align for the next side, then fire
-                startAligningForCurrentStep();
-            }
+            launchState = nextState;
+            robot.launcher.startFeed(nextSide);
+        }
+    }
+
+    private void handleFinalFiringState() {
+        // Wait for last feed to complete, then return to idle
+        if (!robot.launcher.isFeeding()) {
+            robot.launcher.stop();
+            launchState = LaunchState.IDLE;
         }
     }
 
@@ -359,7 +360,7 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 telemetry.addLine("[ IDLE ] - RB to launch");
                 break;
             case ALIGNING:
-                telemetry.addLine(">>> ALIGNING " + FIRE_SEQUENCE[fireStep] + " " + (fireStep + 1) + "/4 <<<");
+                telemetry.addLine(">>> ALIGNING... <<<");
                 telemetry.addData("  Aligned", robot.launcherAssist.isAligned() ? "YES" : "NO");
                 telemetry.addData("  Launcher Ready", robot.launcher.isReady() ? "YES" : "NO");
                 telemetry.addData("  Angle Error", "%.1f°", robot.launcherAssist.getAngleErrorDegrees());
@@ -368,8 +369,17 @@ public class DynaMOE_19889_TeleOp extends LinearOpMode {
                 telemetry.addData("  Rotation Power", "%.2f", robot.launcherAssist.getLastRotationPower());
                 telemetry.addData("  Distance", "%.1f in", robot.launcherAssist.getDistanceToGoal());
                 break;
-            case FIRING:
-                telemetry.addLine(">>> FIRING " + FIRE_SEQUENCE[fireStep] + " " + (fireStep + 1) + "/4 <<<");
+            case FIRING_LEFT_1:
+                telemetry.addLine(">>> FIRING LEFT 1/4 <<<");
+                break;
+            case FIRING_RIGHT_1:
+                telemetry.addLine(">>> FIRING RIGHT 2/4 <<<");
+                break;
+            case FIRING_LEFT_2:
+                telemetry.addLine(">>> FIRING LEFT 3/4 <<<");
+                break;
+            case FIRING_RIGHT_2:
+                telemetry.addLine(">>> FIRING RIGHT 4/4 <<<");
                 break;
         }
         telemetry.addLine();

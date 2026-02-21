@@ -80,18 +80,18 @@ public class LauncherAssist {
      * Close range (36-60 in) added, 100+ inch range corrected upward significantly.
      */
     private static final double[][] VELOCITY_TABLE = {
-        {36, 1040},       // Very close (114.9, 100.6)
-        {51, 1110},       // Close (81.6, 129.9)
-        {55, 1110},       // Close (80.7, 114.7)
-        {58, 1120},       // Close-mid (93.3, 89.2)
-        {60, 1070},       // Close-mid (81.3, 100.3)
-        {80, 1180},       // Mid (78.6, 73.5)
-        {88, 1220},       // Mid (76.5, 64.5)
-        {107, 1300},      // Mid-far (96.4, 31.8)
-        {124, 1443},      // Far — avg of 1480, 1400, 1450 at 123-129 in
-        {155, 1420},      // Original far
-        {163, 1490},      // Original far
-        {170, 1480}       // Max distance tested
+            {36, 1040},       // Very close (114.9, 100.6)
+            {51, 1110},       // Close (81.6, 129.9)
+            {55, 1110},       // Close (80.7, 114.7)
+            {58, 1120},       // Close-mid (93.3, 89.2)
+            {60, 1070},       // Close-mid (81.3, 100.3)
+            {80, 1180},       // Mid (78.6, 73.5)
+            {88, 1220},       // Mid (76.5, 64.5)
+            {107, 1300},      // Mid-far (96.4, 31.8)
+            {124, 1443},      // Far — avg of 1480, 1400, 1450 at 123-129 in
+            {155, 1420},      // Original far
+            {163, 1490},      // Original far
+            {170, 1480}       // Max distance tested
     };
 
     // ==================== STATE VARIABLES ====================
@@ -134,10 +134,10 @@ public class LauncherAssist {
      */
     private void buildHeadingPIDF() {
         headingPIDF = new PIDFController(
-            new PIDFCoefficients(PRIMARY_KP, PRIMARY_KI, PRIMARY_KD, PRIMARY_KF)
+                new PIDFCoefficients(PRIMARY_KP, PRIMARY_KI, PRIMARY_KD, PRIMARY_KF)
         );
         secondaryHeadingPIDF = new PIDFController(
-            new PIDFCoefficients(SECONDARY_KP, SECONDARY_KI, SECONDARY_KD, SECONDARY_KF)
+                new PIDFCoefficients(SECONDARY_KP, SECONDARY_KI, SECONDARY_KD, SECONDARY_KF)
         );
     }
 

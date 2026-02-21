@@ -319,26 +319,26 @@ public class DynaMOE_19889_Auton extends LinearOpMode {
         launchArtifacts();
         robot.launcher.stop();
 
-        // === BOTTOM SPIKE (Y=36) ===
-//        moveToPosition(new Pose(perimLaunchX, 36, heading), "Step 2: Moving to BOTTOM spike area");
-//        robot.intake.intake();
-//        addSimulatedArtifacts();
-//        moveToPosition(new Pose(spikeX, 36, heading), "Step 3: Intaking at BOTTOM SPIKE");
-//        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
-//                "Step 4: BOTTOM SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
-//        launchArtifacts();
-//        robot.launcher.stop();
-//
-//        // === MIDDLE SPIKE (Y=58) ===
-//        moveToPosition(new Pose(perimLaunchX, 58, heading), "Step 5: Moving to MIDDLE spike area");
-//        robot.intake.intake();
-//        addSimulatedArtifacts();
-//        moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
-//        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
-//                "Step 7: MIDDLE SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
-//        launchArtifacts();
-//        robot.launcher.stop();
-//
+//         === BOTTOM SPIKE (Y=36) ===
+        moveToPosition(new Pose(perimLaunchX, 36, heading), "Step 2: Moving to BOTTOM spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(new Pose(spikeX, 36, heading), "Step 3: Intaking at BOTTOM SPIKE");
+        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
+                "Step 4: BOTTOM SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
+        launchArtifacts();
+        robot.launcher.stop();
+
+        // === MIDDLE SPIKE (Y=58) ===
+        moveToPosition(new Pose(perimLaunchX, 58, heading), "Step 5: Moving to MIDDLE spike area");
+        robot.intake.intake();
+        addSimulatedArtifacts();
+        moveToPosition(new Pose(spikeX, 58, heading), "Step 6: Intaking at MIDDLE SPIKE");
+        followPathChainWithCustomSpinup(buildReturnToPerimeterLaunch(),
+                "Step 7: MIDDLE SPIKE to PERIMETER LAUNCH", PERIMETER_LAUNCH_VELOCITY, PERIMETER_LAUNCH_MIN_VELOCITY);
+        launchArtifacts();
+        robot.launcher.stop();
+
 //        // === PARK ===
           moveToPosition(new Pose(85, 35, heading), "Step 8: PARKING");
           robot.intake.stop();
